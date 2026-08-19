@@ -83,6 +83,7 @@ import org.smartregister.fhircore.engine.domain.model.isSummary
 import org.smartregister.fhircore.engine.rulesengine.RulesExecutor
 import org.smartregister.fhircore.engine.task.FhirCarePlanGenerator
 import org.smartregister.fhircore.engine.util.DispatcherProvider
+import org.smartregister.fhircore.engine.util.QuestionnaireMediaResolver
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.allItems
@@ -129,6 +130,7 @@ constructor(
   val fhirValidatorRequestHandlerProvider: Lazy<ResourceValidationRequestHandler>,
   val fhirPathDataExtractor: FhirPathDataExtractor,
   val configurationRegistry: ConfigurationRegistry,
+  val questionnaireMediaResolver: QuestionnaireMediaResolver,
 ) : ViewModel() {
   private val authenticatedOrganizationIds by lazy {
     sharedPreferencesHelper.read<List<String>>(ResourceType.Organization.name)
@@ -163,13 +165,18 @@ constructor(
 
   /**
    * This function retrieves the [Questionnaire] as configured via the [QuestionnaireConfig]. The
-   * retrieved [Questionnaire] can then be pre-populated.
+   * retrieved [Questionnaire] can then be pre-populated. The media attachments of its items are
+   * resolved by the [QuestionnaireMediaResolver] before it is handed over for rendering.
    */
   suspend fun retrieveQuestionnaire(
     questionnaireConfig: QuestionnaireConfig,
   ): Questionnaire? {
     if (questionnaireConfig.id.isEmpty() || questionnaireConfig.id.isBlank()) return null
-    return defaultRepository.loadResourceFromCache<Questionnaire>(questionnaireConfig.id)
+    return defaultRepository.loadResourceFromCache<Questionnaire>(questionnaireConfig.id)?.also {
+      // Relative Binary/<id> itemMedia URLs are rewritten to an absolute FHIR URL so SDC
+      // will ask ReferenceUrlResolver; inline Attachment.data is left in place when present.
+      questionnaireMediaResolver.resolveMediaAttachments(it)
+    }
   }
 
   /**

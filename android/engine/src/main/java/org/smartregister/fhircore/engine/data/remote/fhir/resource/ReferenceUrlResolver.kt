@@ -40,10 +40,9 @@ constructor(val fhirEngine: FhirEngine, val fhirResourceService: FhirResourceSer
     if (url.contains("Binary/")) {
       return try {
         decodeBinaryToBitmap(resolveBinaryResource(url))
-          ?: fetchRemoteBitmapIfAbsolute(url)
       } catch (exception: Exception) {
         Timber.e(exception, "Failed to resolve Binary image from $url")
-        fetchRemoteBitmapIfAbsolute(url)
+        null
       }
     }
     return fetchRemoteBitmap(url)
@@ -55,14 +54,6 @@ constructor(val fhirEngine: FhirEngine, val fhirResourceService: FhirResourceSer
       return null
     }
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-  }
-
-  private suspend fun fetchRemoteBitmapIfAbsolute(url: String): Bitmap? {
-    return if (url.startsWith("http://") || url.startsWith("https://")) {
-      fetchRemoteBitmap(url)
-    } else {
-      null
-    }
   }
 
   private suspend fun fetchRemoteBitmap(url: String): Bitmap? {

@@ -107,6 +107,7 @@ import org.smartregister.fhircore.engine.rulesengine.ConfigRulesExecutor
 import org.smartregister.fhircore.engine.rulesengine.RulesExecutor
 import org.smartregister.fhircore.engine.task.FhirCarePlanGenerator
 import org.smartregister.fhircore.engine.util.DispatcherProvider
+import org.smartregister.fhircore.engine.util.QuestionnaireMediaResolver
 import org.smartregister.fhircore.engine.util.SharedPreferenceKey
 import org.smartregister.fhircore.engine.util.SharedPreferencesHelper
 import org.smartregister.fhircore.engine.util.extension.appendPractitionerInfo
@@ -162,6 +163,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
   private val context: Application = ApplicationProvider.getApplicationContext()
   private val fhirOperator: FhirOperator = mockk()
   private val configRulesExecutor: ConfigRulesExecutor = mockk()
+  private val questionnaireMediaResolver: QuestionnaireMediaResolver = mockk(relaxed = true)
   private val patient =
     Faker.buildPatient().apply {
       address =
@@ -224,6 +226,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirOperator = fhirOperator,
           fhirPathDataExtractor = fhirPathDataExtractor,
           configurationRegistry = configurationRegistry,
+          questionnaireMediaResolver = questionnaireMediaResolver,
         ),
       )
 
@@ -687,6 +690,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
 
     Assert.assertNotNull(questionnaire)
     Assert.assertEquals(questionnaireConfig.id, questionnaire?.id?.extractLogicalIdUuid())
+    coVerify { questionnaireMediaResolver.resolveMediaAttachments(any()) }
   }
 
   @Test
@@ -744,6 +748,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
         fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
         fhirPathDataExtractor = fhirPathDataExtractor,
         configurationRegistry = configurationRegistry,
+        questionnaireMediaResolver = questionnaireMediaResolver,
       )
     val patientAgeLinkId = "patient-age"
     val newQuestionnaireId = "new-${questionnaireConfig.id}"
@@ -2075,6 +2080,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
           fhirPathDataExtractor = fhirPathDataExtractor,
           configurationRegistry = configurationRegistry,
+          questionnaireMediaResolver = questionnaireMediaResolver,
         )
       val questionnaireWithDefaultDate =
         Questionnaire().apply {
@@ -2137,6 +2143,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
           fhirPathDataExtractor = fhirPathDataExtractor,
           configurationRegistry = configurationRegistry,
+          questionnaireMediaResolver = questionnaireMediaResolver,
         )
       val questionnaireWithDefaultDate =
         Questionnaire().apply {
@@ -2213,6 +2220,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
         fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
         fhirPathDataExtractor = fhirPathDataExtractor,
         configurationRegistry = configurationRegistry,
+        questionnaireMediaResolver = questionnaireMediaResolver,
       )
     val cqlIdentifier = "hasChronicCondition"
     val questionnaireWithCqlInitExpr =
@@ -2303,6 +2311,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
         fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
         fhirPathDataExtractor = fhirPathDataExtractor,
         configurationRegistry = configurationRegistry,
+        questionnaireMediaResolver = questionnaireMediaResolver,
       )
     val questionnaireConfig1 =
       questionnaireConfig.copy(
@@ -2412,6 +2421,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
           fhirPathDataExtractor = fhirPathDataExtractor,
           configurationRegistry = configurationRegistry,
+          questionnaireMediaResolver = questionnaireMediaResolver,
         )
       val questionnaireConfig1 =
         questionnaireConfig.copy(
@@ -2498,6 +2508,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirValidatorRequestHandlerProvider = fhirValidatorRequestHandlerProvider,
           fhirPathDataExtractor = fhirPathDataExtractor,
           configurationRegistry = configurationRegistry,
+          questionnaireMediaResolver = questionnaireMediaResolver,
         )
       val questionnaireConfig1 =
         questionnaireConfig.copy(

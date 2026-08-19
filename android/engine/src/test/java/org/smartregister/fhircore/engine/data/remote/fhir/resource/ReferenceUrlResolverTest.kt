@@ -18,7 +18,9 @@ package org.smartregister.fhircore.engine.data.remote.fhir.resource
 
 import android.graphics.Bitmap
 import com.google.android.fhir.FhirEngine
+import com.google.android.fhir.db.ResourceNotFoundException
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -105,6 +107,23 @@ class ReferenceUrlResolverTest : RobolectricTest() {
         )
 
       Assert.assertNotNull(bitmap)
+    }
+  }
+
+  @Test
+  @kotlinx.coroutines.ExperimentalCoroutinesApi
+  fun testResolveBitmapUrlWithMissingLocalBinaryDoesNotFetchRemotely() {
+    runTest {
+      val binaryId = "0eadaee6-1965-5862-ba94-fab36b971abf"
+      coEvery { fhirEngine.get(ResourceType.Binary, binaryId) } throws
+        ResourceNotFoundException(ResourceType.Binary.name, binaryId)
+
+      val bitmap =
+        referenceUrlResolver.resolveBitmapUrl("https://example.org/fhir/Binary/$binaryId")
+
+      Assert.assertNull(bitmap)
+      coVerify(exactly = 0) { fhirResourceService.getResource(any()) }
+      coVerify(exactly = 0) { fhirResourceService.fetchImage(any()) }
     }
   }
 
