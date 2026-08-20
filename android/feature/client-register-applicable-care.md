@@ -11,6 +11,18 @@ Valid status values: `Draft` → `Approved` → `Implemented` → `Superseded`.
 
 ---
 
+## Update 2026-08-12 — checkbox picker, cpg-common-process ordering, sequential launch
+
+`feature/20260812-available-care-picker-and-ordering.md` replaces the single-tap `AlertDialog`
+picker described in §3/§5 below with a **checkbox-per-PlanDefinition + Start button** picker,
+consolidates the selected PDs' options, and launches them one at a time in **cpg-common-process
+order** (a new `tricc-process-order` extension tricc now stamps on each action — see
+`feature/20260812-intervention-order-and-dedup.md` on the tricc side), re-running `$apply` after
+each submission since an earlier one may have unlocked a lower-order action. Read that spec for
+the current picker/session mechanics; §3/§5 here describe the superseded single-select shape.
+
+---
+
 ## Part I — Business spec
 
 ### 1. Problem

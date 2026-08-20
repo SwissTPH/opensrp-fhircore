@@ -559,6 +559,7 @@ Key files:
 |----|--------|--------|
 | **WP0** | This document (`feature/register-tricc.md`) | Done |
 | **WP1** | Client (+ household TRICC) register config; `listResourceDataMap` on register path; RelatedPerson nesting | Done (initial) |
+| **WP1b** | Profile basic data (sex/DOB/age); always-visible related persons; add flow (child/guardian → search or create → RelatedPerson) | Done — see `feature/20260813-related-person-picker.md` |
 | **WP2** | `APPLY_NAMED_EVENT`, `NamedEventInterventionService`, RequestGroup persist, picker UI | Done (initial) |
 | **WP3** | Wire Start care on top-level and nested cards; profile parity | Done (initial) |
 | **WP4** | Sync / KnowledgeManager smoke path for PlanDefinitions offline `$apply` | Pending |
@@ -618,6 +619,8 @@ Do **not** add a second “Household TRICC” register that duplicates All clien
 | Design | `feature/register-tricc.md` |
 | RelatedPerson helpers | `engine/.../util/extension/RelatedPersonAsPatient.kt` (guardian via `identifier` Patient URL) |
 | Dependent enrichment | `RegisterRepository.enrichDependentChildrenFromRelatedPersons` |
+| Guardian Patient nest | `RegisterRepository.enrichGuardianPatientsFromRelatedPersons` |
+| Add related person | `ApplicationWorkflow.ADD_RELATED_PERSON`, `RelatedPersonLinkService`, `RelatedPersonAddCoordinator` (kinship + primary-caregiver extension; std `cdss-client-registration` only) |
 | Register LIST processing | `RulesExecutor.processResourceDataWithLists`, `RegisterPagingSource` |
 | Workflow | `ApplicationWorkflow.APPLY_NAMED_EVENT` |
 | Intervention service | `NamedEventInterventionService` |
