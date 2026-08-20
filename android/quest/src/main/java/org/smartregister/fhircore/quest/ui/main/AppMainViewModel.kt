@@ -56,6 +56,7 @@ import org.smartregister.fhircore.engine.configuration.navigation.NavigationConf
 import org.smartregister.fhircore.engine.configuration.navigation.NavigationMenuConfig
 import org.smartregister.fhircore.engine.configuration.report.measure.MeasureReportConfiguration
 import org.smartregister.fhircore.engine.configuration.workflow.ActionTrigger
+import org.smartregister.fhircore.engine.data.local.ContentCache
 import org.smartregister.fhircore.engine.data.local.register.RegisterRepository
 import org.smartregister.fhircore.engine.domain.model.LauncherType
 import org.smartregister.fhircore.engine.domain.model.MultiSelectViewAction
@@ -89,6 +90,7 @@ import org.smartregister.fhircore.quest.ui.shared.models.AppDrawerUIState
 import org.smartregister.fhircore.quest.ui.shared.models.QuestionnaireSubmission
 import org.smartregister.fhircore.quest.util.extensions.handleClickEvent
 import org.smartregister.fhircore.quest.util.extensions.schedulePeriodically
+import timber.log.Timber
 
 @HiltViewModel
 class AppMainViewModel
@@ -103,6 +105,7 @@ constructor(
   val workManager: WorkManager,
   val fhirCarePlanGenerator: FhirCarePlanGenerator,
   val fhirEngine: FhirEngine,
+  val contentCache: ContentCache,
 ) : ViewModel() {
   val appMainUiState: MutableState<AppMainUiState> =
     mutableStateOf(
@@ -271,6 +274,17 @@ constructor(
           )
         event.navController.navigate(MainNavigationScreen.Profile.route, args)
       }
+    }
+  }
+
+  /**
+   * Drop the in-memory content cache once a sync completes so that Questionnaires and other cached
+   * content resources are re-read from the database instead of served from their pre-sync copy.
+   */
+  fun invalidateContentCacheAfterSync() {
+    viewModelScope.launch(dispatcherProvider.io()) {
+      runCatching { contentCache.invalidate() }
+        .onFailure { Timber.e(it, "Failed to invalidate content cache after sync") }
     }
   }
 

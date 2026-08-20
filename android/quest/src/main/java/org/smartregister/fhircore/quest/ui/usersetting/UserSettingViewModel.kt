@@ -44,6 +44,7 @@ import org.smartregister.fhircore.engine.configuration.ConfigType
 import org.smartregister.fhircore.engine.configuration.ConfigurationRegistry
 import org.smartregister.fhircore.engine.configuration.app.ApplicationConfiguration
 import org.smartregister.fhircore.engine.configuration.app.SettingsOptions
+import org.smartregister.fhircore.engine.data.local.ContentCache
 import org.smartregister.fhircore.engine.data.remote.model.response.UserInfo
 import org.smartregister.fhircore.engine.datastore.PreferenceDataStore
 import org.smartregister.fhircore.engine.domain.model.SnackBarMessageConfig
@@ -92,6 +93,7 @@ constructor(
   val dispatcherProvider: DispatcherProvider,
   private val preferenceDataStore: PreferenceDataStore,
   private val dataMigration: DataMigration,
+  private val contentCache: ContentCache,
 ) : ViewModel() {
 
   val languages by lazy { configurationRegistry.fetchLanguages() }
@@ -230,7 +232,8 @@ constructor(
   /**
    * Re-download Composition-referenced configuration resources (PlanDefinition, Questionnaire,
    * StructureMap, Binary, …) without wiping patient data. Force-refresh omits the incremental
-   * lastUpdated filter used by the silent login worker.
+   * lastUpdated filter used by the silent login worker. Drops [ContentCache] and reloads the
+   * current activity so the next form is not served from a pre-sync in-memory copy.
    */
   fun syncConfiguration(context: Context) {
     if (!context.isDeviceOnline()) {
@@ -247,11 +250,13 @@ constructor(
             configurationRegistry.loadConfigurations(appId, context)
           }
           dataMigration.migrate()
+          contentCache.invalidate()
         }
         context.showToast(
           context.getString(R.string.sync_configuration_completed),
           Toast.LENGTH_LONG,
         )
+        context.getActivity()?.refresh()
       } catch (exception: Exception) {
         Timber.e(exception, "Failed to sync configuration resources")
         context.showToast(

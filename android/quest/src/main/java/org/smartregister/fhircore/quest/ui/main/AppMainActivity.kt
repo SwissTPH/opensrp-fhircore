@@ -280,6 +280,7 @@ open class AppMainActivity : BaseMultiLanguageActivity(), QuestionnaireHandler, 
     when (val syncJobStatus = syncState.currentSyncJobStatus) {
       is CurrentSyncJobStatus.Succeeded ->
         appMainViewModel.run {
+          invalidateContentCacheAfterSync()
           onEvent(
             AppMainEvent.UpdateSyncState(
               syncCounter = syncState.counter,

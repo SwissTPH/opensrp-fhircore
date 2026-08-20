@@ -31,7 +31,9 @@ import com.google.android.fhir.sync.download.ResourceSearchParams
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
+import java.net.URLEncoder
 import java.net.UnknownHostException
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.PropertyResourceBundle
 import java.util.ResourceBundle
@@ -249,6 +251,7 @@ constructor(
   ) {
     // Reset configurations before loading new ones
     configCacheMap.clear()
+    configsJsonMap.clear()
 
     // For appId that ends with suffix /debug e.g. app/debug, we load configurations from assets
     // extract appId by removing the suffix e.g. app from above example
@@ -445,37 +448,79 @@ constructor(
       val parsedAppId = appId.substringBefore(TYPE_REFERENCE_DELIMITER).trim()
       val compositionResource = fetchRemoteCompositionByAppId(parsedAppId)
       compositionResource?.let { composition ->
-        val compositionSections = composition.retrieveCompositionSections()
+        val compositions = linkedMapOf<String, Composition>()
+        compositions[composition.logicalId] = composition
+        fetchRemoteCompositionsByAppIdTag(parsedAppId).forEach { tagged ->
+          compositions.putIfAbsent(tagged.logicalId, tagged)
+        }
+
         val sectionComponentMap = mutableMapOf<String, MutableList<Composition.SectionComponent>>()
-        compositionSections.forEach { sectionComponent ->
-          if (sectionComponent.hasFocus() && sectionComponent.focus.hasReferenceElement()) {
-            val key =
-              sectionComponent.focus.reference.substringBefore(
-                delimiter = TYPE_REFERENCE_DELIMITER,
-                missingDelimiterValue = "",
-              )
-            sectionComponentMap.getOrPut(key) { mutableListOf() }.apply { add(sectionComponent) }
-          }
-          if (sectionComponent.hasEntry() && sectionComponent.entry.isNotEmpty()) {
-            sectionComponent.entry.forEach {
-              val key =
-                it.reference.substringBefore(
-                  delimiter = TYPE_REFERENCE_DELIMITER,
-                  missingDelimiterValue = "",
-                )
-              sectionComponentMap.getOrPut(key) { mutableListOf() }.apply { add(sectionComponent) }
-            }
-          }
+        compositions.values.forEach { packageComposition ->
+          indexCompositionSections(
+            packageComposition.retrieveCompositionSections(),
+            sectionComponentMap,
+          )
         }
 
         processCompositionSectionComponent(sectionComponentMap, forceRefresh)
 
-        // Save composition after fetching all the referenced section resources
-        addOrUpdate(compositionResource)
+        compositions.values.forEach { addOrUpdate(it) }
 
         Timber.d("Done saving composition resource")
       }
     }
+  }
+
+  /**
+   * Package Compositions (e.g. TRICC) list content on `section.entry`, while the shell app
+   * Composition uses `section.focus`. Index both so image Binaries on an `entry` list are fetched.
+   */
+  private fun indexCompositionSections(
+    sections: List<Composition.SectionComponent>,
+    sectionComponentMap: MutableMap<String, MutableList<Composition.SectionComponent>>,
+  ) {
+    sections.forEach { sectionComponent ->
+      if (sectionComponent.hasFocus() && sectionComponent.focus.hasReferenceElement()) {
+        val key =
+          sectionComponent.focus.reference.substringBefore(
+            delimiter = TYPE_REFERENCE_DELIMITER,
+            missingDelimiterValue = "",
+          )
+        sectionComponentMap.getOrPut(key) { mutableListOf() }.apply { add(sectionComponent) }
+      }
+      if (sectionComponent.hasEntry() && sectionComponent.entry.isNotEmpty()) {
+        sectionComponent.entry.forEach {
+          val key =
+            it.reference.substringBefore(
+              delimiter = TYPE_REFERENCE_DELIMITER,
+              missingDelimiterValue = "",
+            )
+          sectionComponentMap.getOrPut(key) { mutableListOf() }.apply { add(sectionComponent) }
+        }
+      }
+    }
+  }
+
+  /**
+   * TRICC (and similar) package Compositions are tagged with the app-id but do not use
+   * `identifier=appId`. The shell Composition is loaded by identifier; these extras carry the
+   * image Binary `entry` list.
+   */
+  private suspend fun fetchRemoteCompositionsByAppIdTag(appId: String): List<Composition> {
+    val tag = URLEncoder.encode("$APP_ID_TAG_SYSTEM|$appId", StandardCharsets.UTF_8.name())
+    val urlPath = "Composition?_tag=$tag&_count=$DEFAULT_COUNT"
+    return runCatching {
+        val compositions =
+          fhirResourceDataSource.getResource(urlPath).entry.mapNotNull {
+            it.resource as? Composition
+          }
+        Timber.i("Found ${compositions.size} app-id tagged Composition(s) for $appId")
+        compositions
+      }
+      .onFailure { exception ->
+        Timber.w(exception, "Failed to fetch app-id tagged Compositions")
+      }
+      .getOrDefault(emptyList())
   }
 
   private suspend fun processCompositionSectionComponent(
@@ -488,20 +533,16 @@ constructor(
         if (entry.key == ResourceType.List.name) {
           processCompositionListResources(entry, forceRefresh)
         } else {
-          val chunkedResourceIdList = entry.value.chunked(MANIFEST_PROCESSOR_BATCH_SIZE)
-
-          chunkedResourceIdList.forEach { sectionComponents ->
-            Timber.d(
-              "Fetching config resource ${entry.key}: with ids ${
-                                sectionComponents.joinToString(
-                                    ",",
-                                )
-                            }",
-            )
+          val resourceIds =
+            entry.value
+              .flatMap { sectionComponent -> sectionComponent.referencedResourceIds() }
+              .distinct()
+              .filter { it.isNotBlank() }
+          resourceIds.chunked(MANIFEST_PROCESSOR_BATCH_SIZE).forEach { chunk ->
+            Timber.d("Fetching config resource ${entry.key}: with ids ${chunk.joinToString(",")}")
             fetchResources(
               resourceType = entry.key,
-              resourceIdList =
-                sectionComponents.map { sectionComponent -> sectionComponent.focus.extractId() },
+              resourceIdList = chunk,
               forceRefresh = forceRefresh,
             )
           }
@@ -707,6 +748,23 @@ constructor(
     _isNonProxy = nonProxy
   }
 
+  /**
+   * Resource ids listed on a section via `focus` (shell app Composition) or `entry` (TRICC package
+   * Composition). Empty `focus` used to drop image Binaries that were only on `entry`.
+   */
+  private fun Composition.SectionComponent.referencedResourceIds(): List<String> {
+    val ids = mutableListOf<String>()
+    if (hasFocus() && focus.hasReferenceElement()) {
+      ids.add(focus.extractId())
+    }
+    if (hasEntry()) {
+      entry.forEach { reference ->
+        if (reference.hasReferenceElement()) ids.add(reference.extractId())
+      }
+    }
+    return ids.filter { it.isNotBlank() }
+  }
+
   @VisibleForTesting
   fun generateRequestBundle(
     resourceType: String,
@@ -720,7 +778,13 @@ constructor(
         Bundle.BundleEntryComponent().apply {
           request =
             Bundle.BundleEntryRequestComponent().apply {
-              url = "$resourceType?$ID=$it${lastUpdatedQuery(resourceType, it, forceRefresh)}"
+              // Binary search is often unsupported / strips payload. Read by id instead.
+              url =
+                if (resourceType == ResourceType.Binary.name) {
+                  "$resourceType/$it"
+                } else {
+                  "$resourceType?$ID=$it${lastUpdatedQuery(resourceType, it, forceRefresh)}"
+                }
               method = Bundle.HTTPVerb.GET
             }
         },
@@ -758,11 +822,13 @@ constructor(
       entry =
         resourceIds
           .map {
-            fhirResourceDataSource
-              .getResource(
-                "$resourceType?${Composition.SP_RES_ID}=$it${lastUpdatedQuery(resourceType, it, forceRefresh)}",
-              )
-              .entry
+            val path =
+              if (resourceType == ResourceType.Binary.name) {
+                "$resourceType?${Composition.SP_RES_ID}=$it"
+              } else {
+                "$resourceType?${Composition.SP_RES_ID}=$it${lastUpdatedQuery(resourceType, it, forceRefresh)}"
+              }
+            fhirResourceDataSource.getResource(path).entry
           }
           .flatten()
     }
@@ -913,6 +979,7 @@ constructor(
     const val RESOURCES_PATH = "resources/"
     const val SYNC_LOCATION_IDS = "_syncLocations"
     const val GREATER_THAN_PREFIX = "gt"
+    const val APP_ID_TAG_SYSTEM = "https://smartregister.org/app-id"
 
     /**
      * The list of resources whose types can be synced down as part of the Composition configs.

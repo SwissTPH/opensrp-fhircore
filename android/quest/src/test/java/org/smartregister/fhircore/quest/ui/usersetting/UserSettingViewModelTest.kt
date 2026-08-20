@@ -49,6 +49,7 @@ import org.robolectric.shadows.ShadowLooper
 import org.smartregister.fhircore.engine.R
 import org.smartregister.fhircore.engine.configuration.app.ConfigService
 import org.smartregister.fhircore.engine.configuration.app.SettingsOptions
+import org.smartregister.fhircore.engine.data.local.ContentCache
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceDataSource
 import org.smartregister.fhircore.engine.data.remote.fhir.resource.FhirResourceService
 import org.smartregister.fhircore.engine.datastore.PreferenceDataStore
@@ -95,6 +96,7 @@ class UserSettingViewModelTest : RobolectricTest() {
   private val sync = mockk<Sync>(relaxed = true)
   private val navController = mockk<NavController>(relaxUnitFun = true)
   private val dataMigration = mockk<DataMigration>(relaxUnitFun = true)
+  private val contentCache = mockk<ContentCache>(relaxUnitFun = true)
 
   init {
     sharedPreferencesHelper = SharedPreferencesHelper(context = context, gson = mockk())
@@ -135,6 +137,7 @@ class UserSettingViewModelTest : RobolectricTest() {
           workManager = workManager,
           dispatcherProvider = dispatcherProvider,
           dataMigration = dataMigration,
+          contentCache = contentCache,
         ),
       )
   }
@@ -326,12 +329,14 @@ class UserSettingViewModelTest : RobolectricTest() {
   fun testSyncConfigurationWhenDeviceIsOnline() {
     mockkStatic(Context::isDeviceOnline)
 
-    val context = mockk<Context>(relaxed = true) { every { isDeviceOnline() } returns true }
+    val context =
+      mockk<HiltActivityForTest>(relaxed = true) { every { isDeviceOnline() } returns true }
 
     coEvery { configurationRegistry.fetchNonWorkflowConfigResources(forceRefresh = true) } just runs
     coEvery { configurationRegistry.loadConfigurations(any(), any(), any()) } just runs
     every { sharedPreferencesHelper.read(SharedPreferenceKey.APP_ID.name, null) } returns "app"
     coEvery { dataMigration.migrate() } just runs
+    coEvery { contentCache.invalidate() } just runs
 
     userSettingViewModel.onEvent(UserSettingsEvent.SyncConfiguration(context))
 
@@ -342,6 +347,8 @@ class UserSettingViewModelTest : RobolectricTest() {
     }
     coVerify(exactly = 1) { configurationRegistry.loadConfigurations("app", context, any()) }
     coVerify(exactly = 1) { dataMigration.migrate() }
+    coVerify(exactly = 1) { contentCache.invalidate() }
+    verify { context.finish() }
 
     unmockkStatic(Context::isDeviceOnline)
   }

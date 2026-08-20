@@ -59,6 +59,7 @@ import org.smartregister.fhircore.engine.configuration.QuestionnaireConfig
 import org.smartregister.fhircore.engine.configuration.navigation.NavigationMenuConfig
 import org.smartregister.fhircore.engine.configuration.workflow.ActionTrigger
 import org.smartregister.fhircore.engine.configuration.workflow.ApplicationWorkflow
+import org.smartregister.fhircore.engine.data.local.ContentCache
 import org.smartregister.fhircore.engine.data.local.register.RegisterRepository
 import org.smartregister.fhircore.engine.domain.model.ActionConfig
 import org.smartregister.fhircore.engine.domain.model.FhirResourceConfig
@@ -104,6 +105,7 @@ class AppMainViewModelTest : RobolectricTest() {
   private val secureSharedPreference: SecureSharedPreference = mockk()
   private val navController = mockk<NavController>(relaxUnitFun = true)
   private val registerRepository: RegisterRepository = mockk()
+  private val contentCache: ContentCache = mockk(relaxUnitFun = true)
   private val application: Context = ApplicationProvider.getApplicationContext()
   private val syncBroadcaster: SyncBroadcaster = mockk(relaxed = true)
   private lateinit var sharedPreferencesHelper: SharedPreferencesHelper
@@ -130,6 +132,7 @@ class AppMainViewModelTest : RobolectricTest() {
           workManager = workManager,
           fhirCarePlanGenerator = fhirCarePlanGenerator,
           fhirEngine = fhirEngine,
+          contentCache = contentCache,
         ),
       )
     runBlocking { configurationRegistry.loadConfigurations("app/debug", application) }
@@ -192,6 +195,15 @@ class AppMainViewModelTest : RobolectricTest() {
       appMainViewModel.getSyncTime(),
     )
     coVerify { appMainViewModel.retrieveAppMainUiState() }
+  }
+
+  @Test
+  fun testInvalidateContentCacheAfterSyncInvalidatesContentCache() = runTest {
+    coEvery { contentCache.invalidate() } just runs
+
+    appMainViewModel.invalidateContentCacheAfterSync()
+
+    coVerify(exactly = 1) { contentCache.invalidate() }
   }
 
   @Test

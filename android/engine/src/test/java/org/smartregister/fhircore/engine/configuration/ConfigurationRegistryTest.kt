@@ -622,6 +622,18 @@ class ConfigurationRegistryTest : RobolectricTest() {
 
   @Test
   @kotlinx.coroutines.ExperimentalCoroutinesApi
+  fun testLoadConfigurationsClearsPreviouslyCachedJson() {
+    val appId = "the app id"
+    configRegistry.configsJsonMap["staleConfig"] = """{"appId":"old"}"""
+    coEvery { fhirEngine.search<Composition>(any()) } returns listOf()
+
+    runTest { configRegistry.loadConfigurations(appId, context) }
+
+    assertTrue(configRegistry.configsJsonMap.isEmpty())
+  }
+
+  @Test
+  @kotlinx.coroutines.ExperimentalCoroutinesApi
   fun testLoadConfigurationsNoLoadFromAssetsIconConfig() {
     val appId = "the app id"
     val referenceId = "referenceId"
@@ -1097,6 +1109,62 @@ class ConfigurationRegistryTest : RobolectricTest() {
   }
 
   @Test
+  @kotlinx.coroutines.ExperimentalCoroutinesApi
+  fun testFetchNonWorkflowConfigResourcesFetchesBinaryListedAsCompositionEntry() = runTest {
+    val appId = "cdss"
+    val imageBinaryId = "0eadaee6-1965-5862-ba94-fab36b971abf"
+    val imageBinary =
+      Binary().apply {
+        id = imageBinaryId
+        contentType = "image/png"
+        data = byteArrayOf(1, 2, 3, 4)
+      }
+    val shellComposition =
+      Composition().apply {
+        id = "shell-composition"
+        identifier = Identifier().apply { value = appId }
+      }
+    val packageComposition =
+      Composition().apply {
+        id = "tricc-package-composition"
+        section =
+          listOf(
+            SectionComponent().apply {
+              addEntry(Reference().apply { reference = "Binary/$imageBinaryId" })
+            },
+          )
+      }
+
+    configRegistry.sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, appId)
+    configRegistry.setNonProxy(true)
+    coEvery {
+      fhirResourceDataSource.getResource(
+        "Composition?identifier=$appId&_count=${ConfigurationRegistry.DEFAULT_COUNT}",
+      )
+    } returns Bundle().apply { addEntry().resource = shellComposition }
+    val tagQuery =
+      java.net.URLEncoder.encode(
+        "${ConfigurationRegistry.APP_ID_TAG_SYSTEM}|$appId",
+        Charsets.UTF_8.name(),
+      )
+    coEvery {
+      fhirResourceDataSource.getResource(
+        "Composition?_tag=$tagQuery&_count=${ConfigurationRegistry.DEFAULT_COUNT}",
+      )
+    } returns Bundle().apply { addEntry().resource = packageComposition }
+    coEvery { fhirResourceDataSource.getResource(match { it.startsWith("Binary?_id=") }) } returns
+      Bundle().apply { addEntry().resource = imageBinary }
+
+    configRegistry.fetchNonWorkflowConfigResources(forceRefresh = true)
+
+    coVerify {
+      fhirResourceDataSource.getResource(
+        "Binary?_id=$imageBinaryId",
+      )
+    }
+  }
+
+  @Test
   fun testPopulateConfigurationsMapWithNeitherFocusNorEntry() = runTest {
     val composition = Composition()
 
@@ -1263,10 +1331,10 @@ class ConfigurationRegistryTest : RobolectricTest() {
 
   @Test
   fun testGenerateRequestBundleIncludesLastUpdated() {
-    val resourceType = "BINARY"
-    val resourceId = "test-binary-id"
+    val resourceType = "Questionnaire"
+    val resourceId = "test-questionnaire-id"
     val timestamp = "2024-01-15T10:00:00Z"
-    val expectedKey = "${resourceType}_${resourceId}_LAST_CONFIG_SYNC_TIMESTAMP"
+    val expectedKey = "${resourceType.uppercase()}_${resourceId}_LAST_CONFIG_SYNC_TIMESTAMP"
 
     configRegistry.sharedPreferencesHelper.write(expectedKey, timestamp)
 
@@ -1280,8 +1348,8 @@ class ConfigurationRegistryTest : RobolectricTest() {
 
   @Test
   fun testGenerateRequestBundleWithNoLastUpdated() {
-    val resourceType = "BINARY"
-    val resourceId = "test-binary-id"
+    val resourceType = "Questionnaire"
+    val resourceId = "test-questionnaire-id"
 
     val resultBundle = configRegistry.generateRequestBundle(resourceType, listOf(resourceId))
 
@@ -1293,10 +1361,10 @@ class ConfigurationRegistryTest : RobolectricTest() {
 
   @Test
   fun testGenerateRequestBundleForceRefreshOmitsLastUpdated() {
-    val resourceType = "BINARY"
-    val resourceId = "test-binary-id"
+    val resourceType = "Questionnaire"
+    val resourceId = "test-questionnaire-id"
     val timestamp = "2024-01-15T10:00:00Z"
-    val expectedKey = "${resourceType}_${resourceId}_LAST_CONFIG_SYNC_TIMESTAMP"
+    val expectedKey = "${resourceType.uppercase()}_${resourceId}_LAST_CONFIG_SYNC_TIMESTAMP"
 
     configRegistry.sharedPreferencesHelper.write(expectedKey, timestamp)
 
@@ -1307,6 +1375,14 @@ class ConfigurationRegistryTest : RobolectricTest() {
       "$resourceType?_id=$resourceId",
       resultBundle.entry.first().request.url,
     )
+  }
+
+  @Test
+  fun testGenerateRequestBundleForBinaryUsesResourceRead() {
+    val resultBundle =
+      configRegistry.generateRequestBundle("Binary", listOf("test-binary-id"))
+
+    assertEquals("Binary/test-binary-id", resultBundle.entry.first().request.url)
   }
 
   @Test
