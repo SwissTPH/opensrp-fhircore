@@ -89,6 +89,7 @@
     <string name="registers">Registers</string>
     <string name="title_no_location_set">No location Set</string>
     <string name="no_locations_to_render">No locations to render on map</string>
+    <string name="geo_widget_unavailable">Map view is not available in this build</string>
     <string name="message_location_set">Set location to sync data and load service points</string>
     <string name="positive_button_location_set">Set location</string>
 

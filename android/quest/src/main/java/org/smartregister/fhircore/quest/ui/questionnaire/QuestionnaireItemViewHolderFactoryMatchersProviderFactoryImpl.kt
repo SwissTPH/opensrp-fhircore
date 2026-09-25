@@ -22,6 +22,7 @@ import com.google.android.fhir.datacapture.contrib.views.barcode.BarCodeReaderVi
 import com.google.android.fhir.datacapture.contrib.views.locationwidget.LocationGpsCoordinateViewHolderFactory
 import com.google.android.fhir.datacapture.contrib.views.locationwidget.LocationWidgetViewHolderFactory
 import com.google.android.fhir.datacapture.extensions.asStringValue
+import org.smartregister.fhircore.quest.ui.sdc.edittext.DebouncedEditTextViewHolderFactories
 import org.smartregister.fhircore.quest.ui.sdc.password.PasswordViewHolderFactory
 import org.smartregister.fhircore.quest.ui.sdc.qrCode.EditTextQrCodeViewHolderFactory
 
@@ -76,6 +77,24 @@ object QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl :
         QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
           factory = LocationWidgetViewHolderFactory,
           matches = LocationWidgetViewHolderFactory::matcher,
+        ),
+        // Keep these last: the first matching factory wins, so the widgets above still take
+        // priority over the plain edit-text questions these stand in for.
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          factory = DebouncedEditTextViewHolderFactories.Decimal,
+          matches = DebouncedEditTextViewHolderFactories.Decimal::matcher,
+        ),
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          factory = DebouncedEditTextViewHolderFactories.Integer,
+          matches = DebouncedEditTextViewHolderFactories.Integer::matcher,
+        ),
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          factory = DebouncedEditTextViewHolderFactories.SingleLineString,
+          matches = DebouncedEditTextViewHolderFactories.SingleLineString::matcher,
+        ),
+        QuestionnaireFragment.QuestionnaireItemViewHolderFactoryMatcher(
+          factory = DebouncedEditTextViewHolderFactories.MultiLineText,
+          matches = DebouncedEditTextViewHolderFactories.MultiLineText::matcher,
         ),
       )
     }

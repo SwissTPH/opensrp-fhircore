@@ -75,7 +75,7 @@ android {
     buildConfigField("String", "OAUTH_BASE_URL", """"${project.extra["OAUTH_BASE_URL"]}"""")
     buildConfigField("String", "OAUTH_CLIENT_ID", """"${project.extra["OAUTH_CLIENT_ID"]}"""")
     buildConfigField("String", "OAUTH_SCOPE", """"${project.extra["OAUTH_SCOPE"]}"""")
-    buildConfigField("String", "OPENSRP_APP_ID", """${project.extra["OPENSRP_APP_ID"]}""")
+    buildConfigField("String", "OPENSRP_APP_ID", """"${project.extra["OPENSRP_APP_ID"]}"""")
     buildConfigField("String", "CONFIGURATION_SYNC_PAGE_SIZE", """"100"""")
     buildConfigField("String", "SENTRY_DSN", """"${project.extra["SENTRY_DSN"]}"""")
     buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
@@ -541,7 +541,6 @@ dependencies {
 
   // Application dependencies
   implementation(project(":engine"))
-  implementation(project(":geowidget")) { isTransitive = true }
   implementation(libs.core.ktx)
   implementation(libs.appcompat)
   implementation(libs.material)
@@ -549,6 +548,9 @@ dependencies {
   implementation(libs.hilt.work)
   implementation(libs.mlkit.barcode.scanning)
   implementation(libs.androidx.fragment.compose)
+  // Already on the runtime classpath via the FHIR SDK's data-capture; declared here so the
+  // replacement questionnaire edit-text widgets in ui/sdc/edittext can compile against it.
+  implementation(libs.compose.material3)
   implementation(libs.bundles.cameraX)
   implementation(libs.log4j)
 

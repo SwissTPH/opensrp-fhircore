@@ -5,9 +5,11 @@ pluginManagement {
         maven(url = "https://oss.sonatype.org/content/repositories/snapshots/")
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
 rootProject.name = "fhircore-android"
 include (":engine")
 include (":quest")
-include (":geowidget")
 include(":linting")
 include(":macrobenchmark")

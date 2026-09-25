@@ -45,6 +45,7 @@ import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.Serializable
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -171,6 +172,11 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
       lifecycleScope.launch {
         try {
           launchQuestionnaire()
+        } catch (e: CancellationException) {
+          // The scope was cancelled because the activity is going away (e.g. the user backed out
+          // mid-launch). That is not a rendering failure - rethrow so the coroutine machinery sees
+          // a normal cancellation instead of us popping an error dialog on a dying window.
+          throw e
         } catch (e: Exception) {
           handleQuestionnaireRenderingFailure(e)
         }
@@ -230,13 +236,19 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
     runOnUiThread {
       alertDialog?.dismiss()
       alertDialog = null
-      AlertDialogue.showAlert(
-        context = this,
-        alertIntent = AlertIntent.ERROR,
-        message = getString(R.string.error_loading_questionnaire_form),
-        title = getString(R.string.error_loading_questionnaire_form_title),
-        confirmButton = AlertDialogButton(listener = { finish() }),
-      )
+      // runOnUiThread executes inline when already on the main thread, which includes the
+      // pre-destroy dispatch. Attaching a dialog to a window that is being torn down leaks it, so
+      // there is nobody left to show the error to - just skip it.
+      if (isFinishing || isDestroyed) return@runOnUiThread
+      // Keep the reference so onDestroy can dismiss it if the activity dies first.
+      alertDialog =
+        AlertDialogue.showAlert(
+          context = this,
+          alertIntent = AlertIntent.ERROR,
+          message = getString(R.string.error_loading_questionnaire_form),
+          title = getString(R.string.error_loading_questionnaire_form_title),
+          confirmButton = AlertDialogButton(listener = { finish() }),
+        )
     }
   }
 
@@ -425,12 +437,12 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
                   fragmentView ->
                   fragmentView
                     .findViewById<View>(
-                      com.google.android.fhir.datacapture.R.id.submit_questionnaire
+                      com.google.android.fhir.datacapture.R.id.submit_questionnaire,
                     )
                     ?.isEnabled = false
                   fragmentView
                     .findViewById<View>(
-                      com.google.android.fhir.datacapture.R.id.cancel_questionnaire
+                      com.google.android.fhir.datacapture.R.id.cancel_questionnaire,
                     )
                     ?.isEnabled = false
                   fragmentView
