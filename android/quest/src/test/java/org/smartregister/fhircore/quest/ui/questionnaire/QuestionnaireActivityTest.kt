@@ -240,16 +240,15 @@ class QuestionnaireActivityTest : RobolectricTest() {
 
   @Test
   fun testIntentBundleKeepsBuildListActionParametersAsParcelableArrayList() {
-    val params =
-      buildList {
-        add(
-          ActionParameter(
-            key = "generateEncounter",
-            paramType = ActionParameterType.PARAMDATA,
-            value = "true",
-          ),
-        )
-      }
+    val params = buildList {
+      add(
+        ActionParameter(
+          key = "generateEncounter",
+          paramType = ActionParameterType.PARAMDATA,
+          value = "true",
+        ),
+      )
+    }
     val bundle = QuestionnaireActivity.intentBundle(questionnaireConfig, params)
     val restored =
       bundle.getParcelableArrayList<ActionParameter>(

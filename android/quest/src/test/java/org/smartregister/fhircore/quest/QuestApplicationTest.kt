@@ -23,6 +23,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.spyk
+import io.mockk.verify
 import io.sentry.Sentry
 import io.sentry.android.core.SentryAndroid
 import io.sentry.android.core.SentryAndroidOptions
@@ -50,7 +51,7 @@ class QuestApplicationTest : RobolectricTest() {
 
   @Test
   fun testSentryMonitoringWhenDsnNotBlank() {
-    val sentryDsn = "debb3087-167a-47ff-b6d4-737be3965a4c"
+    val sentryDsn = "https://abc123@sentry.example.org/logs/1"
     val spyApp = spyk(application)
     val sentryOptions = spyk<SentryAndroidOptions>()
 
@@ -69,6 +70,46 @@ class QuestApplicationTest : RobolectricTest() {
       Assert.assertEquals(1.0, sentryOptions.tracesSampleRate)
       Assert.assertTrue(sentryOptions.isEnableUserInteractionTracing)
       Assert.assertTrue(sentryOptions.isEnableUserInteractionBreadcrumbs)
+      Assert.assertTrue(sentryOptions.isAttachScreenshot)
+      Assert.assertTrue(sentryOptions.isAttachViewHierarchy)
+      Assert.assertTrue(sentryOptions.isAnrEnabled)
+      Assert.assertTrue(sentryOptions.isEnableAutoSessionTracking)
+    }
+  }
+
+  @Test
+  fun testSentryMonitoringSkippedWhenDsnIsGradlePlaceholder() {
+    val spyApp = spyk(application)
+
+    mockkStatic(SentryAndroid::class) {
+      every {
+        SentryAndroid.init(any(), any<Sentry.OptionsConfiguration<SentryAndroidOptions>>())
+      } returns Unit
+
+      // project-properties.gradle.kts substitutes this when local.properties has no SENTRY_DSN;
+      // initialising with it would throw IllegalArgumentException and crash the app at startup.
+      spyApp.initSentryMonitoring(dsn = "sample_SENTRY_DSN")
+
+      verify(exactly = 0) {
+        SentryAndroid.init(any(), any<Sentry.OptionsConfiguration<SentryAndroidOptions>>())
+      }
+    }
+  }
+
+  @Test
+  fun testSentryMonitoringSkippedWhenDsnIsBlank() {
+    val spyApp = spyk(application)
+
+    mockkStatic(SentryAndroid::class) {
+      every {
+        SentryAndroid.init(any(), any<Sentry.OptionsConfiguration<SentryAndroidOptions>>())
+      } returns Unit
+
+      spyApp.initSentryMonitoring(dsn = "   ")
+
+      verify(exactly = 0) {
+        SentryAndroid.init(any(), any<Sentry.OptionsConfiguration<SentryAndroidOptions>>())
+      }
     }
   }
 

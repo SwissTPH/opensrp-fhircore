@@ -88,13 +88,24 @@ class QuestApplication : Application(), DataCaptureConfig.Provider, Configuratio
 
   @VisibleForTesting
   fun initSentryMonitoring(dsn: String = BuildConfig.SENTRY_DSN) {
-    if (dsn.isNotBlank()) {
+    val trimmedDsn = dsn.trim { it <= ' ' }
+    // project-properties.gradle.kts falls back to the literal "sample_SENTRY_DSN" when
+    // local.properties has no DSN. That is not blank, and SentryAndroid.init throws
+    // IllegalArgumentException on an unparseable DSN - crashing the app at startup. Only
+    // initialise for something that actually looks like a DSN.
+    if (trimmedDsn.startsWith("http://") || trimmedDsn.startsWith("https://")) {
       val sentryConfiguration = { options: SentryAndroidOptions ->
-        options.dsn = dsn.trim { it <= ' ' }
+        options.dsn = trimmedDsn
         // To set a uniform sample rate
         options.tracesSampleRate = 1.0
         options.isEnableUserInteractionTracing = true
         options.isEnableUserInteractionBreadcrumbs = true
+        // Content testers have no logcat/adb, so an event has to carry its own context.
+        options.isAttachScreenshot = true
+        options.isAttachViewHierarchy = true
+        options.isAnrEnabled = true
+        options.isEnableAutoSessionTracking = true
+        options.maxBreadcrumbs = MAX_SENTRY_BREADCRUMBS
         options.addIntegration(
           FragmentLifecycleIntegration(
             this,
@@ -148,6 +159,10 @@ class QuestApplication : Application(), DataCaptureConfig.Provider, Configuratio
             QuestionnaireItemViewHolderFactoryMatchersProviderFactoryImpl,
         )
     return configuration as DataCaptureConfig
+  }
+
+  companion object {
+    private const val MAX_SENTRY_BREADCRUMBS = 200
   }
 
   override val workManagerConfiguration: Configuration =

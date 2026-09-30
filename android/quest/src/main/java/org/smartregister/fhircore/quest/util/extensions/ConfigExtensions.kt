@@ -54,12 +54,12 @@ import org.smartregister.fhircore.engine.configuration.view.StackViewProperties
 import org.smartregister.fhircore.engine.configuration.view.ViewProperties
 import org.smartregister.fhircore.engine.configuration.workflow.ActionTrigger
 import org.smartregister.fhircore.engine.configuration.workflow.ApplicationWorkflow
+import org.smartregister.fhircore.engine.data.local.RelatedPersonLinkService
 import org.smartregister.fhircore.engine.domain.model.ActionConfig
 import org.smartregister.fhircore.engine.domain.model.ActionParameter
 import org.smartregister.fhircore.engine.domain.model.ActionParameterType
 import org.smartregister.fhircore.engine.domain.model.ResourceData
 import org.smartregister.fhircore.engine.domain.model.ViewType
-import org.smartregister.fhircore.engine.data.local.RelatedPersonLinkService
 import org.smartregister.fhircore.engine.task.NamedEventInterventionService
 import org.smartregister.fhircore.engine.util.extension.decodeJson
 import org.smartregister.fhircore.engine.util.extension.decodeToBitmap
@@ -93,9 +93,7 @@ const val GENERATE_ENCOUNTER_PARAM_KEY = "generateEncounter"
 
 /** Absent or any value other than `"false"` means generate the session Encounter. */
 fun List<ActionParameter>.resolveGenerateEncounter(): Boolean =
-  find { it.key == GENERATE_ENCOUNTER_PARAM_KEY }
-    ?.value
-    ?.equals("false", ignoreCase = true) != true
+  find { it.key == GENERATE_ENCOUNTER_PARAM_KEY }?.value?.equals("false", ignoreCase = true) != true
 
 fun buildStartCareActionParameters(
   encounterId: String?,
@@ -406,8 +404,8 @@ private fun actionDisplayOrDefault(computedValuesMap: Map<String, Any>): String 
 }
 
 /**
- * One checkbox per PlanDefinition that carries the named-event trigger and has at least one
- * valid ($apply-resolved) action, plus a Start button — per
+ * One checkbox per PlanDefinition that carries the named-event trigger and has at least one valid
+ * ($apply-resolved) action, plus a Start button — per
  * `feature/20260812-intervention-order-and-dedup.md`'s companion Android spec. All rows default
  * checked (everything listed is already eligible); Start begins the ordered launch sequence for
  * whichever rows remain checked.
@@ -449,11 +447,11 @@ private fun showAvailableCarePicker(
 }
 
 /**
- * Tracks one "select available care" run across its whole sequence of launches: which PDs the
- * user checked, which questionnaires are already submitted this session (so a re-`$apply` never
- * re-shows something just completed — no PD-level applicability condition exists yet, see
- * `feature/careplan-intervention-plandefinition.md` §26), and the current-visit Encounter id
- * once known (learned from the first submission that produced one).
+ * Tracks one "select available care" run across its whole sequence of launches: which PDs the user
+ * checked, which questionnaires are already submitted this session (so a re-`$apply` never re-shows
+ * something just completed — no PD-level applicability condition exists yet, see
+ * `feature/careplan-intervention-plandefinition.md` §26), and the current-visit Encounter id once
+ * known (learned from the first submission that produced one).
  */
 private class AvailableCareSession(
   val namedEvent: String,
@@ -468,10 +466,9 @@ private class AvailableCareSession(
   var encounterId: String? = null
 
   /**
-   * The picker's own already-computed `$apply` result, reused for exactly the first batch
-   * ("should have been saved, no need to run it again") — cleared after first use so every
-   * subsequent batch re-runs `$apply` for real (an earlier submission may have unlocked a
-   * lower-order action).
+   * The picker's own already-computed `$apply` result, reused for exactly the first batch ("should
+   * have been saved, no need to run it again") — cleared after first use so every subsequent batch
+   * re-runs `$apply` for real (an earlier submission may have unlocked a lower-order action).
    */
   var cachedPlans: List<NamedEventInterventionService.AvailableCarePlan>? = initialPlans
 }
@@ -499,13 +496,13 @@ private suspend fun resolveNextBatch(
 }
 
 /**
- * Launches the next lowest-order due questionnaire(s) from [session]'s selected PDs, then waits
- * for its submission (via [EventBus]) to advance again. Ends silently once nothing is left due.
+ * Launches the next lowest-order due questionnaire(s) from [session]'s selected PDs, then waits for
+ * its submission (via [EventBus]) to advance again. Ends silently once nothing is left due.
  *
  * Note: if the user backs out of the launched Questionnaire without submitting, no event fires
- * (matches today's `AppMainActivity.onSubmitQuestionnaire`, which only triggers on `RESULT_OK`)
- * and this session simply stops advancing — bounded by [LifecycleOwner]'s own scope cancellation,
- * not a leak, but the user would need to re-open the picker to resume.
+ * (matches today's `AppMainActivity.onSubmitQuestionnaire`, which only triggers on `RESULT_OK`) and
+ * this session simply stops advancing — bounded by [LifecycleOwner]'s own scope cancellation, not a
+ * leak, but the user would need to re-open the picker to resume.
  */
 private fun advanceAvailableCareSession(
   context: Context,

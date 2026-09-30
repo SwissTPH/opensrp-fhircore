@@ -239,7 +239,10 @@ constructor(
             )
             withContext(dispatcherProvider.main()) {
               context.showToast(
-                context.getString(R.string.structuremap_failed, questionnaire.name ?: questionnaire.logicalId),
+                context.getString(
+                  R.string.structuremap_failed,
+                  questionnaire.name ?: questionnaire.logicalId,
+                ),
                 Toast.LENGTH_LONG,
               )
             }
@@ -262,7 +265,8 @@ constructor(
         }
 
       val extractedIds = idTypes.await()
-      // Still invoke callback so the Activity can dismiss progress; it should not finish on empty SM extract.
+      // Still invoke callback so the Activity can dismiss progress; it should not finish on empty
+      // SM extract.
       onSuccessfulSubmission(
         extractedIds,
         currentQuestionnaireResponse,
@@ -870,7 +874,9 @@ constructor(
                   val id = structureMapUrl.substringAfterLast("/").substringBefore("|")
                   val sm = defaultRepository.loadResourceFromCache<StructureMap>(id)
                   if (sm == null) {
-                    Timber.e("StructureMap not found in local store for id=$id url=$structureMapUrl")
+                    Timber.e(
+                      "StructureMap not found in local store for id=$id url=$structureMapUrl",
+                    )
                   } else {
                     Timber.w(
                       "Loaded StructureMap/$id groups=${sm.group?.size} rules=${sm.group?.firstOrNull()?.rule?.size}",
@@ -898,7 +904,10 @@ constructor(
             )
           } else {
             context.showToast(
-              context.getString(R.string.structuremap_failed, questionnaire.name ?: questionnaire.logicalId),
+              context.getString(
+                R.string.structuremap_failed,
+                questionnaire.name ?: questionnaire.logicalId,
+              ),
               Toast.LENGTH_LONG,
             )
           }
@@ -1090,7 +1099,10 @@ constructor(
 
     val subject =
       launchContextResources.firstOrNull { res ->
-        questionnaire.subjectType.firstOrNull()?.code.equals(res.resourceType.name, ignoreCase = true)
+        questionnaire.subjectType
+          .firstOrNull()
+          ?.code
+          .equals(res.resourceType.name, ignoreCase = true)
       } ?: launchContextResources.firstOrNull()
 
     if (subject == null) return
@@ -1105,14 +1117,16 @@ constructor(
       }
 
     val inputParameters = Parameters()
-    launchContextResources.firstOrNull { it.resourceType == ResourceType.Encounter }?.let { enc ->
-      inputParameters.addParameter(
-        Parameters.ParametersParameterComponent().apply {
-          name = "encounterid"
-          value = StringType(enc.logicalId)
-        },
-      )
-    }
+    launchContextResources
+      .firstOrNull { it.resourceType == ResourceType.Encounter }
+      ?.let { enc ->
+        inputParameters.addParameter(
+          Parameters.ParametersParameterComponent().apply {
+            name = "encounterid"
+            value = StringType(enc.logicalId)
+          },
+        )
+      }
     (subject as? Patient)?.let { p ->
       inputParameters.addParameter(
         Parameters.ParametersParameterComponent().apply {
@@ -1131,8 +1145,7 @@ constructor(
               if (inputParameters.hasParameter()) inputParameters else null,
               dataBundle,
               expressionSet,
-            ) as? Parameters
-              ?: return@forEach
+            ) as? Parameters ?: return@forEach
 
           applyCqlExpressionResultsToInitial(questionnaire.item, resultParameters, expressionSet)
         }
@@ -1148,10 +1161,7 @@ constructor(
   ) {
     items.forEach { item ->
       item.initialExpression?.let { expr ->
-        if (
-          !expr.expression.isNullOrBlank() &&
-            expr.language in CQL_INITIAL_EXPRESSION_LANGUAGES
-        ) {
+        if (!expr.expression.isNullOrBlank() && expr.language in CQL_INITIAL_EXPRESSION_LANGUAGES) {
           expressionSet.add(expr.expression)
         }
       }
@@ -1179,7 +1189,9 @@ constructor(
             val cqlResultValue = (param.value ?: param.resource) as? org.hl7.fhir.r4.model.Type
             if (cqlResultValue != null) {
               // Avoid ResourceMapper rejecting items that have both initial and initialExpression.
-              item.removeExtension(org.smartregister.fhircore.engine.util.extension.EXTENSION_INITIAL_EXPRESSION_URL)
+              item.removeExtension(
+                org.smartregister.fhircore.engine.util.extension.EXTENSION_INITIAL_EXPRESSION_URL,
+              )
               item.initial =
                 mutableListOf(
                   Questionnaire.QuestionnaireItemInitialComponent().apply {
@@ -1419,7 +1431,8 @@ constructor(
         },
       )
 
-      // Apply CQL initialExpression defaults before ResourceMapper.populate so they become QR answers.
+      // Apply CQL initialExpression defaults before ResourceMapper.populate so they become QR
+      // answers.
       // Skip when reopening a saved/editable/draft response (saved answers take precedence).
       val willLoadSavedResponse =
         resourceType != null &&

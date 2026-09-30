@@ -35,6 +35,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
 import androidx.core.os.bundleOf
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import ca.uhn.fhir.parser.IParser
@@ -43,8 +45,10 @@ import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValid
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.AndroidEntryPoint
+import io.sentry.Sentry
 import java.io.Serializable
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,6 +95,8 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
   private var previousUncaughtExceptionHandler: Thread.UncaughtExceptionHandler? = null
   private lateinit var fusedLocationClient: FusedLocationProviderClient
   private var currentLocation: Location? = null
+  private var answerOptionsToggleRebinderCallback: FragmentManager.FragmentLifecycleCallbacks? =
+    null
   private val locationPermissionLauncher: ActivityResultLauncher<Array<String>> =
     registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
       permissions: Map<String, Boolean> ->
@@ -171,6 +177,11 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
       lifecycleScope.launch {
         try {
           launchQuestionnaire()
+        } catch (e: CancellationException) {
+          // The scope was cancelled because the activity is going away (e.g. the user backed out
+          // mid-launch). That is not a rendering failure - rethrow so the coroutine machinery sees
+          // a normal cancellation instead of us popping an error dialog on a dying window.
+          throw e
         } catch (e: Exception) {
           handleQuestionnaireRenderingFailure(e)
         }
@@ -216,7 +227,7 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
     // posted), but the recovery UI below is a best-effort fallback only, not a guarantee - the
     // process is typically killed right after this handler returns. Prefer catching failures
     // earlier (see launchQuestionnaire/getQuestionnaireFragmentBuilder) whenever possible.
-    handleQuestionnaireRenderingFailure(throwable)
+    handleQuestionnaireRenderingFailure(throwable, fatal = true)
   }
 
   private fun isQuestionnaireRenderingException(throwable: Throwable): Boolean =
@@ -224,19 +235,44 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
       .flatMap { it.stackTrace.asSequence() }
       .any { it.className.startsWith("com.google.android.fhir.datacapture") }
 
-  /** Single choke point for questionnaire rendering failures: log to Timber, tell the user. */
-  private fun handleQuestionnaireRenderingFailure(throwable: Throwable) {
-    Timber.e(throwable, "Failed to render questionnaire ${questionnaireConfig.id}")
+  /**
+   * Single choke point for questionnaire rendering failures: log to Timber, tell the user.
+   *
+   * [ReleaseTree] turns the Timber call into a Sentry event, so the scope pushed here is what gives
+   * that event its questionnaire id - and a fingerprint, without which every form's render failure
+   * would group into one issue because they share the SDK's stack frames. `withScope` pops the
+   * scope on return, which is safe because `Sentry.captureException` applies the scope on the
+   * calling thread before handing the envelope to the transport.
+   *
+   * Pass [fatal] when called from the uncaught exception handler: the process is normally killed as
+   * soon as that handler returns, so the asynchronous send has to be flushed or the event is lost.
+   * Callers on a live main thread must not set it - the flush blocks.
+   */
+  private fun handleQuestionnaireRenderingFailure(throwable: Throwable, fatal: Boolean = false) {
+    Sentry.withScope { scope ->
+      scope.setTag("questionnaire.id", questionnaireConfig.id)
+      scope.fingerprint = listOf("questionnaire-render", questionnaireConfig.id)
+      Timber.e(throwable, "Failed to render questionnaire ${questionnaireConfig.id}")
+    }
+    if (fatal) {
+      Sentry.flush(SENTRY_FLUSH_TIMEOUT_MILLIS)
+    }
     runOnUiThread {
       alertDialog?.dismiss()
       alertDialog = null
-      AlertDialogue.showAlert(
-        context = this,
-        alertIntent = AlertIntent.ERROR,
-        message = getString(R.string.error_loading_questionnaire_form),
-        title = getString(R.string.error_loading_questionnaire_form_title),
-        confirmButton = AlertDialogButton(listener = { finish() }),
-      )
+      // runOnUiThread executes inline when already on the main thread, which includes the
+      // pre-destroy dispatch. Attaching a dialog to a window that is being torn down leaks it, so
+      // there is nobody left to show the error to - just skip it.
+      if (isFinishing || isDestroyed) return@runOnUiThread
+      // Keep the reference so onDestroy can dismiss it if the activity dies first.
+      alertDialog =
+        AlertDialogue.showAlert(
+          context = this,
+          alertIntent = AlertIntent.ERROR,
+          message = getString(R.string.error_loading_questionnaire_form),
+          title = getString(R.string.error_loading_questionnaire_form_title),
+          confirmButton = AlertDialogButton(listener = { finish() }),
+        )
     }
   }
 
@@ -425,12 +461,12 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
                   fragmentView ->
                   fragmentView
                     .findViewById<View>(
-                      com.google.android.fhir.datacapture.R.id.submit_questionnaire
+                      com.google.android.fhir.datacapture.R.id.submit_questionnaire,
                     )
                     ?.isEnabled = false
                   fragmentView
                     .findViewById<View>(
-                      com.google.android.fhir.datacapture.R.id.cancel_questionnaire
+                      com.google.android.fhir.datacapture.R.id.cancel_questionnaire,
                     )
                     ?.isEnabled = false
                   fragmentView
@@ -492,12 +528,45 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
         .build()
 
     viewBinding.clearAll.setOnClickListener { questionnaireFragment.clearAllAnswers() }
+    registerAnswerOptionsToggleRebinder(questionnaire)
     supportFragmentManager.commit {
       setReorderingAllowed(true)
       replace(R.id.container, questionnaireFragment, QUESTIONNAIRE_FRAGMENT_TAG)
     }
 
     registerFragmentResultListener(questionnaire)
+  }
+
+  /**
+   * Works around a re-binding gap in the SDC library that leaves
+   * `sdc-questionnaire-answerOptionsToggleExpression` results unpainted. See
+   * [AnswerOptionsToggleRebinder] - it is a no-op for questionnaires that do not use the extension.
+   *
+   * The rebinder needs the fragment's view *and* the adapter the SDK sets on it in `onViewCreated`,
+   * so it is attached from `onFragmentViewCreated`, which the FragmentManager dispatches once
+   * `QuestionnaireFragment.onViewCreated` has returned. The callback stays registered so a
+   * re-created fragment view is re-attached, and any callback from a previous render is dropped
+   * because [renderQuestionnaire] can run more than once per activity.
+   */
+  private fun registerAnswerOptionsToggleRebinder(questionnaire: Questionnaire) {
+    answerOptionsToggleRebinderCallback?.let {
+      supportFragmentManager.unregisterFragmentLifecycleCallbacks(it)
+    }
+    val callback =
+      object : FragmentManager.FragmentLifecycleCallbacks() {
+        override fun onFragmentViewCreated(
+          fragmentManager: FragmentManager,
+          fragment: Fragment,
+          view: View,
+          savedInstanceState: Bundle?,
+        ) {
+          if (fragment is QuestionnaireFragment) {
+            AnswerOptionsToggleRebinder.attach(view, fragment.viewLifecycleOwner, questionnaire)
+          }
+        }
+      }
+    answerOptionsToggleRebinderCallback = callback
+    supportFragmentManager.registerFragmentLifecycleCallbacks(callback, false)
   }
 
   private suspend fun getQuestionnaireFragmentBuilder(
@@ -717,6 +786,9 @@ class QuestionnaireActivity : BaseMultiLanguageActivity() {
       ?.getQuestionnaireResponse()
 
   companion object {
+
+    /** How long [handleQuestionnaireRenderingFailure] waits for Sentry before the process dies. */
+    private const val SENTRY_FLUSH_TIMEOUT_MILLIS = 5_000L
 
     const val QUESTIONNAIRE_FRAGMENT_TAG = "questionnaireFragment"
     const val SPEECH_TO_TEXT_FRAGMENT_TAG = "speechToTextFragment"
