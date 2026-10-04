@@ -24,8 +24,7 @@ tasks.named("dokkaHtmlPartial") {
 }
 
 android {
-  compileSdk = BuildConfigs.compileSdk
-
+  compileSdk = 35
   namespace = "org.smartregister.fhircore.engine"
 
   defaultConfig {
@@ -113,6 +112,7 @@ android {
   lint { baseline = file("lint-baseline.xml") }
 
   testCoverage { jacocoVersion = BuildConfigs.jacocoVersion }
+  buildToolsVersion = "34.0.0"
 }
 
 tasks.withType<Test> {
@@ -174,7 +174,13 @@ dependencies {
     exclude(group = "org.slf4j", module = "jcl-over-slf4j")
     exclude(group = "ca.uhn.hapi.fhir")
   }
-  api(libs.p2p.lib)
+  api(libs.p2p.lib) {
+    // p2p-lib declares net.zetetic:android-database-sqlcipher but references none of its classes
+    // (verified against the published AAR). Keeping it would put a second, 4 KB-aligned
+    // libsqlcipher.so next to the one from sqlcipher-android and break 16 KB page-size support
+    // (and fail mergeNativeLibs with a duplicate path).
+    exclude(group = "net.zetetic", module = "android-database-sqlcipher")
+  }
   api(libs.java.jwt)
   api(libs.fhir.common.utils) { exclude(group = "org.slf4j", module = "jcl-over-slf4j") }
   api(libs.runtime.livedata)

@@ -56,7 +56,11 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:textColorSecondary">@color/white</item>
+        <!-- No android:textColorSecondary override here: unlike AppTheme, which needs white
+             secondary text for its dark action bar, every questionnaire surface below is white
+             (colorSurface / android:colorBackground), so a white secondary text colour renders
+             caption-sized text (TextAppearance.Material3.BodySmall and anything else deriving from
+             TextAppearance.AppCompat.Caption, e.g. the flyover) invisible. -->
         <item name="questionnaireSubmitButtonStyle">@style/AppTheme.QuestionnaireSubmitButtonStyle</item>
         <item name="questionnaireButtonStyle">@style/AppTheme.QuestionnaireButtonStyle</item>
         <item name="questionnaireCancelButtonStyle">@style/AppTheme.QuestionnaireCancelButtonStyle</item>

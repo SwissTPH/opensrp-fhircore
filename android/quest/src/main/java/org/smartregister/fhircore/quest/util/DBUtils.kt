@@ -31,7 +31,7 @@ import java.security.NoSuchAlgorithmException
 import javax.crypto.KeyGenerator
 import javax.crypto.Mac
 import javax.crypto.SecretKey
-import net.sqlcipher.database.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 import timber.log.Timber
 
 object DBUtils {
@@ -102,7 +102,7 @@ object DBUtils {
   fun decryptDb(databaseFile: File, backupFile: File, passphrase: ByteArray?): Boolean {
     if (backupFile.parentFile.canWrite() && databaseFile.exists()) {
       val encryptedDb =
-        SQLiteDatabase.openDatabase(databaseFile.absolutePath, passphrase, null, 0, null, null)
+        SQLiteDatabase.openDatabase(databaseFile.absolutePath, passphrase, null, 0, null)
 
       // create an empty database
       android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(

@@ -1187,7 +1187,12 @@ constructor(
           val param = resultParameters.getParameter(exprName)
           if (param != null) {
             val cqlResultValue = (param.value ?: param.resource) as? org.hl7.fhir.r4.model.Type
-            if (cqlResultValue != null) {
+            // A null CQL define comes back as a primitive with no value and a
+            // data-absent-reason extension; applying it as `initial` gives hidden items a
+            // fake empty answer and changes the form's calculations.
+            val isAbsent =
+              cqlResultValue is org.hl7.fhir.r4.model.PrimitiveType<*> && !cqlResultValue.hasValue()
+            if (cqlResultValue != null && !isAbsent) {
               // Avoid ResourceMapper rejecting items that have both initial and initialExpression.
               item.removeExtension(
                 org.smartregister.fhircore.engine.util.extension.EXTENSION_INITIAL_EXPRESSION_URL,

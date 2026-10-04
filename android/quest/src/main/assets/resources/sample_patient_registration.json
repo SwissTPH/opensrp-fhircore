@@ -19,12 +19,17 @@
       {
         "system": "urn:ietf:bcp:47",
         "code": "nb-NO",
-        "display": "Bokmål"
+        "display": "Bokm\u00e5l"
       },
       {
         "system": "urn:ietf:bcp:47",
         "code": "en-GB",
         "display": "English"
+      },
+      {
+        "system": "https://smartregister.org/app-id",
+        "code": "cdss",
+        "display": "CDSS application"
       }
     ]
   },
