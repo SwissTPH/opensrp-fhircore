@@ -407,8 +407,9 @@ private fun actionDisplayOrDefault(computedValuesMap: Map<String, Any>): String 
  * One checkbox per PlanDefinition that carries the named-event trigger and has at least one valid
  * ($apply-resolved) action, plus a Start button — per
  * `feature/20260812-intervention-order-and-dedup.md`'s companion Android spec. All rows default
- * checked (everything listed is already eligible); Start begins the ordered launch sequence for
- * whichever rows remain checked.
+ * **unchecked**: being listed means a package is eligible, not that it is intended for this visit,
+ * so the user opts in rather than unpicking a pre-made selection. Start begins the ordered launch
+ * sequence for whichever rows are checked, and stays disabled until at least one is.
  */
 private fun showAvailableCarePicker(
   context: Context,
@@ -422,28 +423,38 @@ private fun showAvailableCarePicker(
   generateEncounter: Boolean,
 ) {
   val labels = plans.map { it.title }.toTypedArray()
-  val checked = BooleanArray(plans.size) { true }
-  val selectedIndices = plans.indices.toMutableSet()
-  AlertDialog.Builder(context)
-    .setTitle(title)
-    .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
-      if (isChecked) selectedIndices.add(which) else selectedIndices.remove(which)
-    }
-    .setPositiveButton("Start") { _, _ ->
-      val selectedPlans = selectedIndices.mapNotNull { plans.getOrNull(it) }
-      if (selectedPlans.isEmpty()) return@setPositiveButton
-      val session =
-        AvailableCareSession(
-          namedEvent = namedEvent,
-          subjectId = subjectId,
-          selectedPlanIds = selectedPlans.map { it.planDefinitionId }.toSet(),
-          initialPlans = selectedPlans,
-          generateEncounter = generateEncounter,
-        )
-      advanceAvailableCareSession(context, navController, service, eventBus, session)
-    }
-    .setNegativeButton(android.R.string.cancel, null)
-    .show()
+  val checked = BooleanArray(plans.size) { false }
+  val selectedIndices = mutableSetOf<Int>()
+  val dialog =
+    AlertDialog.Builder(context)
+      .setTitle(title)
+      .setMultiChoiceItems(labels, checked) { shownDialog, which, isChecked ->
+        if (isChecked) selectedIndices.add(which) else selectedIndices.remove(which)
+        // Nothing checked is now the starting state, so Start would otherwise dismiss the
+        // dialog and silently do nothing.
+        (shownDialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled =
+          selectedIndices.isNotEmpty()
+      }
+      .setPositiveButton("Start") { _, _ ->
+        val selectedPlans = selectedIndices.mapNotNull { plans.getOrNull(it) }
+        if (selectedPlans.isEmpty()) return@setPositiveButton
+        val session =
+          AvailableCareSession(
+            namedEvent = namedEvent,
+            subjectId = subjectId,
+            selectedPlanIds = selectedPlans.map { it.planDefinitionId }.toSet(),
+            initialPlans = selectedPlans,
+            generateEncounter = generateEncounter,
+          )
+        advanceAvailableCareSession(context, navController, service, eventBus, session)
+      }
+      .setNegativeButton(android.R.string.cancel, null)
+      .create()
+  // The positive button only exists once the dialog is shown.
+  dialog.setOnShowListener {
+    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = selectedIndices.isNotEmpty()
+  }
+  dialog.show()
 }
 
 /**

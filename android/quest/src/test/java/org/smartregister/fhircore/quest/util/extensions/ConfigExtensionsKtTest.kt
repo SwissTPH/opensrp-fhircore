@@ -1032,8 +1032,7 @@ class ConfigExtensionsKtTest : RobolectricTest() {
 
   @Test
   fun testBuildStartCareActionParametersCarriesEncounterWithoutDroppingGenerateFlag() {
-    val params =
-      buildStartCareActionParameters(encounterId = "enc-1", generateEncounter = true)
+    val params = buildStartCareActionParameters(encounterId = "enc-1", generateEncounter = true)
     Assert.assertEquals(2, params.size)
     Assert.assertEquals("encounter", params[0].key)
     Assert.assertEquals("enc-1", params[0].value)
