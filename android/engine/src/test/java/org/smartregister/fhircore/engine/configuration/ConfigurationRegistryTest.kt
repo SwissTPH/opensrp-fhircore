@@ -1379,8 +1379,7 @@ class ConfigurationRegistryTest : RobolectricTest() {
 
   @Test
   fun testGenerateRequestBundleForBinaryUsesResourceRead() {
-    val resultBundle =
-      configRegistry.generateRequestBundle("Binary", listOf("test-binary-id"))
+    val resultBundle = configRegistry.generateRequestBundle("Binary", listOf("test-binary-id"))
 
     assertEquals("Binary/test-binary-id", resultBundle.entry.first().request.url)
   }

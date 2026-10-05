@@ -600,23 +600,32 @@ constructor(
       }
 
       // Set Encounter on QR if the ResourceType is Encounter
-      if (entryResource.resourceType == ResourceType.Encounter) {
-        questionnaireResponse.setEncounter(entryResource.asReference())
-      } else if (resolvedEncounterReference != null) {
-        // Ties this submission's other resources back to the resolved Encounter instead of
-        // duplicating its sync tags onto each of them — see
-        // feature/20260817-encounter-scoped-sync-tags.md.
-        entryResource.appendEncounterReference(resolvedEncounterReference)
-      }
+      val isEncounter = entryResource.resourceType == ResourceType.Encounter
+      val attachedToEncounter =
+        when {
+          isEncounter -> {
+            questionnaireResponse.setEncounter(entryResource.asReference())
+            false
+          }
+          resolvedEncounterReference != null -> {
+            // Ties this submission's other resources back to the resolved Encounter instead of
+            // duplicating its sync tags onto each of them — see
+            // feature/20260817-encounter-scoped-sync-tags.md.
+            entryResource.appendEncounterReference(resolvedEncounterReference)
+          }
+          else -> false
+        }
 
       // Set the Group's Related Entity Location metadata tag on Resource before saving.
       entryResource.applyRelatedEntityLocationMetaTag(questionnaireConfig, context, subjectType)
 
-      // Sync-strategy tags land on the resolved Encounter only; everything else in the same
-      // submission relies on its .encounter reference for that context instead of duplicating
-      // the tags. When no Encounter is resolved at all, behavior is unchanged: tag everything.
-      val addMandatoryTags =
-        resolvedEncounterReference == null || entryResource.resourceType == ResourceType.Encounter
+      // Sync-strategy tags land on the resolved Encounter; a sibling that actually carries an
+      // .encounter reference back to it relies on that for the same context rather than
+      // duplicating the tags. Types with no such field (Patient, RelatedPerson, Group, Flag,
+      // Task, CarePlan, ...) must keep their own tags — untagged and unreferenced, the FHIR
+      // gateway's sync filter can never return them, so they would stay invisible to every other
+      // device. When no Encounter is resolved at all, behavior is unchanged: tag everything.
+      val addMandatoryTags = isEncounter || !attachedToEncounter
       defaultRepository.addOrUpdate(addMandatoryTags, resource = entryResource)
 
       updateGroupManagingEntity(

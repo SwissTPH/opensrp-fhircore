@@ -82,8 +82,7 @@ class ReferenceUrlResolverTest : RobolectricTest() {
         }
       coEvery { fhirEngine.get(ResourceType.Binary, binary.idPart) } returns binary
 
-      val bitmap =
-        referenceUrlResolver.resolveBitmapUrl("Binary/${binary.idPart}")
+      val bitmap = referenceUrlResolver.resolveBitmapUrl("Binary/${binary.idPart}")
 
       Assert.assertNotNull(bitmap)
     }

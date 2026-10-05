@@ -503,8 +503,8 @@ constructor(
 
   /**
    * TRICC (and similar) package Compositions are tagged with the app-id but do not use
-   * `identifier=appId`. The shell Composition is loaded by identifier; these extras carry the
-   * image Binary `entry` list.
+   * `identifier=appId`. The shell Composition is loaded by identifier; these extras carry the image
+   * Binary `entry` list.
    */
   private suspend fun fetchRemoteCompositionsByAppIdTag(appId: String): List<Composition> {
     val tag = URLEncoder.encode("$APP_ID_TAG_SYSTEM|$appId", StandardCharsets.UTF_8.name())
@@ -517,9 +517,7 @@ constructor(
         Timber.i("Found ${compositions.size} app-id tagged Composition(s) for $appId")
         compositions
       }
-      .onFailure { exception ->
-        Timber.w(exception, "Failed to fetch app-id tagged Compositions")
-      }
+      .onFailure { exception -> Timber.w(exception, "Failed to fetch app-id tagged Compositions") }
       .getOrDefault(emptyList())
   }
 

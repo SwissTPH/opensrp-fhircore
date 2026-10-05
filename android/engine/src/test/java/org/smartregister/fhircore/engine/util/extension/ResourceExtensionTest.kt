@@ -890,28 +890,38 @@ class ResourceExtensionTest : RobolectricTest() {
   @Test
   fun `test appendEncounterReference sets encounter on Observation Resource`() {
     val observation = Observation().apply { this.id = "obs-1" }
-    observation.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+    Assert.assertTrue(
+      observation.appendEncounterReference("enc-1".asReference(ResourceType.Encounter)),
+    )
     Assert.assertEquals("Encounter/enc-1", observation.encounter.reference)
   }
 
   @Test
   fun `test appendEncounterReference sets encounter on Condition Resource`() {
     val condition = Condition().apply { this.id = "condition-1" }
-    condition.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+    Assert.assertTrue(
+      condition.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+    )
     Assert.assertEquals("Encounter/enc-1", condition.encounter.reference)
   }
 
   @Test
   fun `test appendEncounterReference sets encounter on MedicationRequest Resource`() {
     val medicationRequest = MedicationRequest().apply { this.id = "med-req-1" }
-    medicationRequest.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+    Assert.assertTrue(
+      medicationRequest.appendEncounterReference("enc-1".asReference(ResourceType.Encounter)),
+    )
     Assert.assertEquals("Encounter/enc-1", medicationRequest.encounter.reference)
   }
 
   @Test
   fun `test appendEncounterReference sets context on MedicationAdministration Resource`() {
     val medicationAdministration = MedicationAdministration().apply { this.id = "med-admin-1" }
-    medicationAdministration.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+    Assert.assertTrue(
+      medicationAdministration.appendEncounterReference(
+        "enc-1".asReference(ResourceType.Encounter),
+      ),
+    )
     Assert.assertEquals("Encounter/enc-1", medicationAdministration.context.reference)
   }
 
@@ -927,10 +937,31 @@ class ResourceExtensionTest : RobolectricTest() {
   }
 
   @Test
-  fun `test appendEncounterReference is a no-op for unsupported Resource types`() {
-    val patient = Patient().apply { this.id = "patient-1" }
-    // Should not throw for a Resource type with no .encounter/.context field
-    patient.appendEncounterReference("enc-1".asReference(ResourceType.Encounter))
+  fun `test appendEncounterReference returns false for unsupported Resource types`() {
+    // A Resource type with no .encounter/.context field cannot carry the Encounter's context, so
+    // the call must not throw and must report that nothing was attached — the caller relies on
+    // that to keep stamping the sync-strategy tags on it.
+    Assert.assertFalse(
+      Patient()
+        .apply { this.id = "patient-1" }
+        .appendEncounterReference(
+          "enc-1".asReference(ResourceType.Encounter),
+        ),
+    )
+    Assert.assertFalse(
+      RelatedPerson()
+        .apply { this.id = "related-person-1" }
+        .appendEncounterReference(
+          "enc-1".asReference(ResourceType.Encounter),
+        ),
+    )
+    Assert.assertFalse(
+      Group()
+        .apply { this.id = "group-1" }
+        .appendEncounterReference(
+          "enc-1".asReference(ResourceType.Encounter),
+        ),
+    )
   }
 
   @Test

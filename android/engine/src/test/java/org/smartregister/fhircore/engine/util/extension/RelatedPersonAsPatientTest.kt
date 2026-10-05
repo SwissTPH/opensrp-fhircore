@@ -89,7 +89,7 @@ class RelatedPersonAsPatientTest {
                   Coding(
                     IDENTIFIER_TYPE_SYSTEM_V2_0203,
                     IDENTIFIER_TYPE_PT,
-                    "Patient external identifier"
+                    "Patient external identifier",
                   ),
                 )
             system = RELATED_PERSON_PATIENT_IDENTIFIER_SYSTEM

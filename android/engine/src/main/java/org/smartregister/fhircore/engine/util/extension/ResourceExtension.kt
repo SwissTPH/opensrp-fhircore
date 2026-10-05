@@ -330,19 +330,45 @@ fun Resource.appendPractitionerInfo(practitionerId: String?) {
  * that carry one, unless already set by the StructureMap that produced the resource. Used to tie
  * clinical resources extracted alongside an Encounter (generated or otherwise resolved) back to it,
  * see `feature/20260817-encounter-scoped-sync-tags.md`.
+ *
+ * Returns `true` when this resource type carries such a reference, `false` otherwise (Patient,
+ * RelatedPerson, Group, Flag, Task, CarePlan, ...). Callers use the result to decide whether the
+ * resource can rely on the Encounter for its sync-strategy context or must carry its own tags: a
+ * resource with no reference back to the Encounter and no tags of its own can never be matched by
+ * the FHIR gateway's sync filter, so it would be invisible to every other device.
  */
-fun Resource.appendEncounterReference(encounterReference: Reference) {
+fun Resource.appendEncounterReference(encounterReference: Reference): Boolean =
   when (this) {
-    is Observation -> encounter = updateReference(encounter, encounterReference)
-    is Condition -> encounter = updateReference(encounter, encounterReference)
-    is Procedure -> encounter = updateReference(encounter, encounterReference)
-    is MedicationRequest -> encounter = updateReference(encounter, encounterReference)
-    is MedicationAdministration -> context = updateReference(context, encounterReference)
-    is ServiceRequest -> encounter = updateReference(encounter, encounterReference)
-    is DiagnosticReport -> encounter = updateReference(encounter, encounterReference)
-    else -> {}
+    is Observation -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    is Condition -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    is Procedure -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    is MedicationRequest -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    is MedicationAdministration -> {
+      context = updateReference(context, encounterReference)
+      true
+    }
+    is ServiceRequest -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    is DiagnosticReport -> {
+      encounter = updateReference(encounter, encounterReference)
+      true
+    }
+    else -> false
   }
-}
 
 fun Resource.appendRelatedEntityLocation(
   questionnaireResponse: QuestionnaireResponse,

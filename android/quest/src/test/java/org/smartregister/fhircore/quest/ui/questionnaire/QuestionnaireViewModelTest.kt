@@ -80,6 +80,7 @@ import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemComponent
 import org.hl7.fhir.r4.model.QuestionnaireResponse
 import org.hl7.fhir.r4.model.Reference
+import org.hl7.fhir.r4.model.RelatedPerson
 import org.hl7.fhir.r4.model.Resource
 import org.hl7.fhir.r4.model.ResourceType
 import org.hl7.fhir.r4.model.StringType
@@ -1787,6 +1788,42 @@ class QuestionnaireViewModelTest : RobolectricTest() {
     // Encounter is tagged; the Observation alongside it in the same bundle is not, and is
     // instead attached to the Encounter via its own .encounter reference.
     coVerify { defaultRepository.addOrUpdate(true, resource = encounter) }
+    coVerify { defaultRepository.addOrUpdate(false, resource = observation) }
+    Assert.assertEquals("Encounter/enc-1", observation.encounter.reference)
+  }
+
+  @Test
+  fun testSaveExtractedResourcesStillTagsResourcesThatCannotReferenceTheEncounter() = runTest {
+    val encounter = Encounter().apply { id = "enc-1" }
+    val newPatient = Patient().apply { id = "patient-9" }
+    val relatedPerson = RelatedPerson().apply { id = "rp-1" }
+    val observation = Observation().apply { id = "obs-1" }
+    val bundle =
+      Bundle().apply {
+        addEntry(Bundle.BundleEntryComponent().apply { resource = encounter })
+        addEntry(Bundle.BundleEntryComponent().apply { resource = newPatient })
+        addEntry(Bundle.BundleEntryComponent().apply { resource = relatedPerson })
+        addEntry(Bundle.BundleEntryComponent().apply { resource = observation })
+      }
+    val questionnaire = extractionQuestionnaire()
+    val questionnaireResponse = extractionQuestionnaireResponse()
+
+    coEvery { defaultRepository.addOrUpdate(any(Boolean::class), any<Resource>()) } just runs
+
+    questionnaireViewModel.saveExtractedResources(
+      bundle = bundle,
+      questionnaire = questionnaire,
+      questionnaireConfig = questionnaireConfig,
+      questionnaireResponse = questionnaireResponse,
+      context = context,
+    )
+
+    // Patient and RelatedPerson have no .encounter field, so dropping their sync-strategy tags
+    // would leave them unmatchable by the gateway's sync filter and invisible on every other
+    // device. Only the Observation, which does reference the Encounter, goes untagged.
+    coVerify { defaultRepository.addOrUpdate(true, resource = encounter) }
+    coVerify { defaultRepository.addOrUpdate(true, resource = newPatient) }
+    coVerify { defaultRepository.addOrUpdate(true, resource = relatedPerson) }
     coVerify { defaultRepository.addOrUpdate(false, resource = observation) }
     Assert.assertEquals("Encounter/enc-1", observation.encounter.reference)
   }
