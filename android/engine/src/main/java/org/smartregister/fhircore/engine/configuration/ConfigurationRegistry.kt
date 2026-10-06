@@ -351,30 +351,29 @@ constructor(
         }
       }
     } else {
+      var allConfigsPresent = true
       composition.retrieveCompositionSections().forEach { sectionComponent ->
         if (sectionComponent.hasFocus()) {
-          addBinaryToConfigsJsonMap(
-            sectionComponent.focus,
-            configsLoadedCallback,
-          )
+          allConfigsPresent = addBinaryToConfigsJsonMap(sectionComponent.focus) && allConfigsPresent
         }
         if (sectionComponent.hasEntry() && sectionComponent.entry.isNotEmpty()) {
           sectionComponent.entry.forEach { entryReference ->
-            addBinaryToConfigsJsonMap(
-              entryReference,
-              configsLoadedCallback,
-            )
+            allConfigsPresent = addBinaryToConfigsJsonMap(entryReference) && allConfigsPresent
           }
         }
+      }
+      // A config set that is only partly on the device is not usable. Reporting it as loaded let
+      // the caller persist the app ID and carry on into a half configured app.
+      if (!allConfigsPresent) {
+        withContext(dispatcherProvider.main()) { configsLoadedCallback(false) }
+        return
       }
     }
     configsLoadedCallback(true)
   }
 
-  private suspend fun addBinaryToConfigsJsonMap(
-    entryReference: Reference,
-    configsLoadedCallback: (Boolean) -> Unit,
-  ) {
+  /** Returns false when the referenced config is not on the device. */
+  private suspend fun addBinaryToConfigsJsonMap(entryReference: Reference): Boolean {
     if (entryReference.hasReferenceElement() && entryReference.hasIdentifier()) {
       val configIdentifier = entryReference.identifier.value
       val referenceResourceType = entryReference.reference.substringBefore(TYPE_REFERENCE_DELIMITER)
@@ -385,10 +384,11 @@ constructor(
           configsJsonMap[configIdentifier] = configBinary.content.decodeToString()
         } catch (resourceNotFoundException: ResourceNotFoundException) {
           Timber.e(resourceNotFoundException, "Missing Binary file with ID :$extractedId")
-          withContext(dispatcherProvider.main()) { configsLoadedCallback(false) }
+          return false
         }
       }
     }
+    return true
   }
 
   private fun isAppConfig(referenceResourceType: String) =

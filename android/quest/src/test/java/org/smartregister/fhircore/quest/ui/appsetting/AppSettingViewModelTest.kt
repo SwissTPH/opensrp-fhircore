@@ -115,6 +115,19 @@ class AppSettingViewModelTest : RobolectricTest() {
   }
 
   @Test
+  fun `onApplicationIdChanged() should not persist the app id`() {
+    sharedPreferencesHelper.remove(SharedPreferenceKey.APP_ID.name)
+
+    appSettingViewModel.onApplicationIdChanged("appId")
+
+    // Persisting before the configurations load sends every later launch down the already
+    // configured path, which never contacts the server, so a first run interrupted before the
+    // configurations arrived could only be recovered by clearing the app data.
+    Assert.assertNull(sharedPreferencesHelper.read(SharedPreferenceKey.APP_ID.name, null))
+    Assert.assertEquals("appId", appSettingViewModel.appId.value)
+  }
+
+  @Test
   fun testLoadConfigurations() = runTest {
     coEvery { appSettingViewModel.fhirResourceDataSource.getResource(any()) } returns
       Bundle().apply { addEntry().resource = Composition() }

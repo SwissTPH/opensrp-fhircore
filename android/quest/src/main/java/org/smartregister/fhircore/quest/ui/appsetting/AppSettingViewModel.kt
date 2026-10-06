@@ -83,10 +83,16 @@ constructor(
     get() = _error
 
   fun onApplicationIdChanged(appId: String) {
-    sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, appId)
+    // Deliberately not persisted here. The app ID is only written once its configurations have
+    // actually loaded, otherwise an interrupted first run leaves an app ID behind that sends every
+    // later launch down the "already configured" path, which never contacts the server again.
     _appId.value = appId
     _error.value = ""
   }
+
+  private fun isDebugAppId(appId: String) =
+    appId.endsWith(ConfigurationRegistry.DEBUG_SUFFIX, ignoreCase = true) &&
+      sharedPreferencesHelper.isDebugVariant()
 
   /**
    * Fetch the [Composition] resource whose identifier matches the provided [appId]. Save the
@@ -98,7 +104,7 @@ constructor(
     val appId = appId.value?.trim()
     if (!appId.isNullOrEmpty()) {
       when {
-        sharedPreferencesHelper.hasDebugSuffix() -> loadConfigurations(context)
+        isDebugAppId(appId) -> loadConfigurations(context)
         else -> fetchRemoteConfigurations(appId, context)
       }
     }
@@ -196,7 +202,7 @@ constructor(
           }
 
         Timber.d("Done fetching application configurations remotely")
-        loadConfigurations(context)
+        loadConfigurations(context, fetchWhenMissing = false)
       } catch (unknownHostException: UnknownHostException) {
         _error.postValue(context.getString(R.string.error_loading_config_no_internet))
         showProgressBar.postValue(false)
@@ -224,21 +230,38 @@ constructor(
     }
   }
 
-  fun loadConfigurations(context: Context) {
+  /**
+   * Loads the configurations already on the device for the current app ID.
+   *
+   * [fetchWhenMissing] makes a device whose configurations are absent or incomplete recover on its
+   * own: the setup is retried against the server instead of failing for good. That is what a first
+   * run interrupted part way through leaves behind, and it used to be unrecoverable without
+   * clearing the app data, because this path never contacts the server. It is off when called back
+   * from [fetchRemoteConfigurations] so that a genuinely unsupported app ID cannot loop.
+   */
+  fun loadConfigurations(context: Context, fetchWhenMissing: Boolean = true) {
     appId.value?.trim()?.let { thisAppId ->
       viewModelScope.launch(dispatcherProvider.io()) {
         configurationRegistry.loadConfigurations(thisAppId, context) { loadConfigSuccessful ->
-          showProgressBar.postValue(false)
-          if (loadConfigSuccessful) {
-            sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, thisAppId)
-            val activity = context.getActivity()
-            when {
-              org.smartregister.fhircore.quest.BuildConfig.SKIP_AUTHENTICATION ->
-                activity?.startActivity(Intent(context, AppMainActivity::class.java))
-              else -> activity?.launchActivityWithNoBackStackHistory<LoginActivity>()
+          when {
+            loadConfigSuccessful -> {
+              showProgressBar.postValue(false)
+              sharedPreferencesHelper.write(SharedPreferenceKey.APP_ID.name, thisAppId)
+              val activity = context.getActivity()
+              when {
+                org.smartregister.fhircore.quest.BuildConfig.SKIP_AUTHENTICATION ->
+                  activity?.startActivity(Intent(context, AppMainActivity::class.java))
+                else -> activity?.launchActivityWithNoBackStackHistory<LoginActivity>()
+              }
             }
-          } else {
-            _error.postValue(context.getString(R.string.application_not_supported, thisAppId))
+            fetchWhenMissing && !isDebugAppId(thisAppId) -> {
+              Timber.w("Configurations missing for $thisAppId, fetching them from the server")
+              fetchRemoteConfigurations(thisAppId, context)
+            }
+            else -> {
+              showProgressBar.postValue(false)
+              _error.postValue(context.getString(R.string.application_not_supported, thisAppId))
+            }
           }
         }
       }
