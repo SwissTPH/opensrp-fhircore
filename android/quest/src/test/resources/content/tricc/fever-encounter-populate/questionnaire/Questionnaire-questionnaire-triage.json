@@ -1,0 +1,52 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "4c4a975c-9bcb-5ee1-9c6e-83d4f6367caf",
+  "url": "https://fhir.tricc.io/Questionnaire/4c4a975c-9bcb-5ee1-9c6e-83d4f6367caf",
+  "name": "questionnaire-triage",
+  "title": "questionnaire-triage",
+  "status": "draft",
+  "subjectType": [
+    "Patient"
+  ],
+  "item": [
+    {
+      "linkId": "start_triage",
+      "text": "Start triage",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "fever_Vv_1",
+          "text": "Temperature",
+          "type": "quantity",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-unit",
+              "valueCoding": {
+                "system": "http://unitsofmeasure.org",
+                "code": "Cel",
+                "display": "C"
+              }
+            },
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql-identifier",
+                "expression": "Dedup_fever_Vv_1"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-targetStructureMap",
+      "valueCanonical": "https://fhir.tricc.io/StructureMap/dd07def5-80e4-5e6d-8e34-5258b27ab893"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "https://fhir.tricc.io/Library/fever-triage-triage"
+    }
+  ]
+}

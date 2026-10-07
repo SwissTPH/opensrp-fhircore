@@ -1,0 +1,39 @@
+map "https://fhir.tricc.io/StructureMap/dd07def5-80e4-5e6d-8e34-5258b27ab893" = 'dd07def5-80e4-5e6d-8e34-5258b27ab893'
+
+uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
+uses "http://hl7.org/fhir/StructureDefinition/Bundle" as target
+uses "http://hl7.org/fhir/StructureDefinition/Observation" as target
+uses "http://hl7.org/fhir/StructureDefinition/Condition" as target
+
+// Extraction driven by CodeSystem conceptType (Symptom-Finding → Observation,
+// Diagnosis / proposed_diagnosis → Condition provisional, AcceptDiag → confirmed/refuted).
+// Repeat slot (when repeat != 1) is written to https://fhir.tricc.io/StructureDefinition/observation-repeat-index.
+
+group extract(source src : QuestionnaireResponse, target bundle : Bundle) {
+  src -> bundle.type = 'transaction' "type";
+  src.item as item then extractItems(item, src, bundle) "walkItems";
+}
+
+group extractItems(source item, source src : QuestionnaireResponse, target bundle : Bundle) {
+  item.item as child then extractItems(child, src, bundle) "walkChildren";
+  item as q where(linkId = 'fever_Vv_1') then {
+    q.answer as answer then extract_fever(answer, src, bundle) "answer";
+  } "extract_fever";
+}
+
+group extract_fever(source answer, source src : QuestionnaireResponse, target bundle : Bundle) {
+  src -> bundle.entry as entry then {
+    src -> entry.request as req then {
+      src -> req.method = 'POST' "method";
+      src -> req.url = 'Observation' "url";
+    } "req";
+    src -> entry.resource = create('Observation') as tgt then {
+      src.subject as subject -> tgt.subject = subject "subject";
+      src.encounter as enc -> tgt.encounter = enc "encounter";
+      src -> tgt.status = 'final' "status";
+      src -> tgt.code = cc('https://fhir.tricc.io/CodeSystem/tricc', 'fever', 'Temperature') "code";
+      src.authored as authored -> tgt.effective = authored "effective";
+      answer.value : Quantity as qty -> tgt.value = qty "value";
+    } "resource";
+  } "entry";
+}

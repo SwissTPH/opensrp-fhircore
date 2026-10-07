@@ -1,0 +1,88 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "1483471a-1d3f-542d-8950-68703ed1506b",
+  "url": "https://fhir.tricc.io/Questionnaire/1483471a-1d3f-542d-8950-68703ed1506b",
+  "name": "questionnaire-history-and-physical",
+  "title": "questionnaire-history-and-physical",
+  "status": "draft",
+  "subjectType": [
+    "Patient"
+  ],
+  "item": [
+    {
+      "linkId": "start_assess",
+      "text": "Start assessment",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "load_fever",
+          "text": "Temperature recorded at triage",
+          "type": "quantity",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-hidden",
+              "valueBoolean": true
+            },
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-unit",
+              "valueCoding": {
+                "system": "http://unitsofmeasure.org",
+                "code": "Cel",
+                "display": "C"
+              }
+            },
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql-identifier",
+                "expression": "Calc_load_fever"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "fever_high",
+          "text": "Temperature at or above 37.5",
+          "type": "boolean",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-hidden",
+              "valueBoolean": true
+            },
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-calculatedExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "(%resource.item.where(linkId='start_assess').item.where(linkId='load_fever').answer.where($this.exists()).value).toDecimal() >= 37.5"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "fever_note",
+          "text": "Fever confirmed from triage temperature.",
+          "type": "display",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-enableWhenExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%resource.item.where(linkId='start_assess').item.where(linkId='fever_high').answer.where($this.exists()).value = true"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-targetStructureMap",
+      "valueCanonical": "https://fhir.tricc.io/StructureMap/0e389558-3367-5e70-b47b-ccdd4c3d67ea"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "https://fhir.tricc.io/Library/fever-triage-history-and-physical"
+    }
+  ]
+}

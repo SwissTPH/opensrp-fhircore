@@ -1,0 +1,23 @@
+{
+  "resourceType": "Library",
+  "id": "885a1474-698c-53e3-bf3b-aa57cb3d1830",
+  "url": "https://fhir.tricc.io/Library/fever-triage-triage",
+  "version": "1.0.0",
+  "name": "fever-triage-triage",
+  "title": "fever-triage - fever-triage-triage CQL Library",
+  "status": "draft",
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
+        "code": "logic-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "text/cql",
+      "data": "bGlicmFyeSAiZmV2ZXItdHJpYWdlLXRyaWFnZSIgdmVyc2lvbiAnMS4wLjAnCgp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4xJwoKaW5jbHVkZSBGSElSSGVscGVycyB2ZXJzaW9uICc0LjAuMScgY2FsbGVkIEZISVJIZWxwZXJzCmluY2x1ZGUgImZldmVyLXRyaWFnZS1IZWxwZXIiIHZlcnNpb24gJzEuMC4wJyBjYWxsZWQgSGVscGVyCgpjb250ZXh0IFBhdGllbnQKCgoKZGVmaW5lIERlZHVwX2ZldmVyX1Z2XzE6IEhlbHBlci5HZXRPYnNlcnZhdGlvblZhbHVlKCdmZXZlcicpCg=="
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "resourceType": "StructureMap",
+  "id": "dd07def5-80e4-5e6d-8e34-5258b27ab893",
+  "url": "https://fhir.tricc.io/StructureMap/dd07def5-80e4-5e6d-8e34-5258b27ab893",
+  "name": "fever_triage_triage_extract",
+  "title": "Extract triage QuestionnaireResponse",
+  "version": "1.0.0",
+  "status": "active",
+  "description": "QuestionnaireResponse → transaction Bundle for process 'triage'. conceptType Symptom-Finding/Question → Observation; proposed_diagnosis → Condition (provisional); AcceptDiag → Condition confirmed or refuted. Repeat != 1 writes the observation-repeat-index extension.",
+  "structure": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+      "mode": "source"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/Bundle",
+      "mode": "target"
+    }
+  ],
+  "group": [
+    {
+      "name": "extract",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "src",
+          "type": "QuestionnaireResponse",
+          "mode": "source"
+        },
+        {
+          "name": "bundle",
+          "type": "Bundle",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "bundleType",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "bundle",
+              "contextType": "variable",
+              "element": "type",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueString": "transaction"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "documentation": "Create a transaction Bundle and walk QuestionnaireResponse items."
+    },
+    {
+      "name": "extractItems",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "item",
+          "mode": "source"
+        },
+        {
+          "name": "src",
+          "type": "QuestionnaireResponse",
+          "mode": "source"
+        },
+        {
+          "name": "bundle",
+          "type": "Bundle",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "extract_fever",
+          "source": [
+            {
+              "context": "item",
+              "condition": "linkId = 'fever_Vv_1'"
+            }
+          ],
+          "dependent": [
+            {
+              "name": "extract_fever",
+              "variable": [
+                "answer",
+                "src",
+                "bundle"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><pre>map &quot;https://fhir.tricc.io/StructureMap/dd07def5-80e4-5e6d-8e34-5258b27ab893&quot; = 'dd07def5-80e4-5e6d-8e34-5258b27ab893'\n\nuses &quot;http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse&quot; as source\nuses &quot;http://hl7.org/fhir/StructureDefinition/Bundle&quot; as target\nuses &quot;http://hl7.org/fhir/StructureDefinition/Observation&quot; as target\nuses &quot;http://hl7.org/fhir/StructureDefinition/Condition&quot; as target\n\n// Extraction driven by CodeSystem conceptType (Symptom-Finding → Observation,\n// Diagnosis / proposed_diagnosis → Condition provisional, AcceptDiag → confirmed/refuted).\n// Repeat slot (when repeat != 1) is written to https://fhir.tricc.io/StructureDefinition/observation-repeat-index.\n\ngroup extract(source src : QuestionnaireResponse, target bundle : Bundle) {\n  src -&gt; bundle.type = 'transaction' &quot;type&quot;;\n  src.item as item then extractItems(item, src, bundle) &quot;walkItems&quot;;\n}\n\ngroup extractItems(source item, source src : QuestionnaireResponse, target bundle : Bundle) {\n  item.item as child then extractItems(child, src, bundle) &quot;walkChildren&quot;;\n  item as q where(linkId = 'fever_Vv_1') then {\n    q.answer as answer then extract_fever(answer, src, bundle) &quot;answer&quot;;\n  } &quot;extract_fever&quot;;\n}\n\ngroup extract_fever(source answer, source src : QuestionnaireResponse, target bundle : Bundle) {\n  src -&gt; bundle.entry as entry then {\n    src -&gt; entry.request as req then {\n      src -&gt; req.method = 'POST' &quot;method&quot;;\n      src -&gt; req.url = 'Observation' &quot;url&quot;;\n    } &quot;req&quot;;\n    src -&gt; entry.resource = create('Observation') as tgt then {\n      src.subject as subject -&gt; tgt.subject = subject &quot;subject&quot;;\n      src.encounter as enc -&gt; tgt.encounter = enc &quot;encounter&quot;;\n      src -&gt; tgt.status = 'final' &quot;status&quot;;\n      src -&gt; tgt.code = cc('https://fhir.tricc.io/CodeSystem/tricc', 'fever', 'Temperature') &quot;code&quot;;\n      src.authored as authored -&gt; tgt.effective = authored &quot;effective&quot;;\n      answer.value : Quantity as qty -&gt; tgt.value = qty &quot;value&quot;;\n    } &quot;resource&quot;;\n  } &quot;entry&quot;;\n}\n</pre></div>"
+  }
+}
