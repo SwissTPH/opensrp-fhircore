@@ -1,0 +1,29 @@
+# OpenSRP local distribution — thin entrypoint (include pattern like openimis).
+#
+# Files:
+#   compose.proxy.yml Traefik (:80) path router
+#   compose.auth.yml  Keycloak + DB              → Traefik /*
+#   compose.fhir.yml  HAPI + Gateway + DB        → Traefik /fhir
+#   compose.logs.yml  GlitchTip                  → Traefik /logs
+#   compose.init.yml  one-shot bootstrap / waits (omit for prod-like)
+#
+# Usage:
+#   docker compose up -d
+#
+# Access (single host via Traefik):
+#   FHIR:      http://localhost/fhir/metadata
+#   Keycloak:  http://localhost/realms/opensrp
+#   GlitchTip: http://localhost/logs/
+#   Traefik:   http://localhost:8088/dashboard/
+#
+# Android emulator (port 80):
+#   OAUTH_BASE_URL=http://10.0.2.2/realms/opensrp/
+#   FHIR_BASE_URL=http://10.0.2.2/fhir/
+#   SENTRY_DSN=…@10.0.2.2/…   (from conf/glitchtip/public-dsn.android.txt)
+
+include:
+  - path: compose.proxy.yml
+  - path: compose.auth.yml
+  - path: compose.fhir.yml
+  - path: compose.logs.yml
+  - path: compose.init.yml

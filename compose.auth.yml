@@ -1,0 +1,77 @@
+# Identity / access — Keycloak + its database.
+# Public access only via Traefik (compose.proxy.yml) at PathPrefix(`/`) with low priority.
+
+services:
+  postgres-keycloak:
+    # Stay on major 14 unless you wipe volumes — PG refuses PG14 data dirs on 16+
+    image: postgres:14-alpine
+    container_name: postgres-keycloak
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123!}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak} -d ${KEYCLOAK_DB_NAME:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    restart: unless-stopped
+    # Behind Traefik: trust X-Forwarded-Proto so HTTPS stays HTTPS (avoids
+    # Location: http://… redirects that then hit "HTTPS required").
+    command: >-
+      start
+      --import-realm
+      --http-enabled=true
+      --hostname-strict=false
+      --proxy-headers=xforwarded
+      --http-relative-path=/
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres-keycloak
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak123!}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Must be the PUBLIC URL clients use (https://IP or https://dns).
+      # Do not also set KC_HOSTNAME — mutually exclusive with KC_HOSTNAME_URL.
+      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL:-https://localhost}
+      KC_HOSTNAME_ADMIN_URL: ${KEYCLOAK_PUBLIC_URL:-https://localhost}
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      # Allow HTTP health/internal while public edge is HTTPS
+      KC_HTTP_ENABLED: "true"
+    # No host ports — Traefik only
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: http://localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    labels:
+      - opensrp.proxy=true
+      - traefik.enable=true
+      # Catch-all: admin UI, /realms/*, static resources (lowest priority)
+      - traefik.http.routers.keycloak.rule=PathPrefix(`/`)
+      - traefik.http.routers.keycloak.entrypoints=web
+      - traefik.http.routers.keycloak.priority=1
+      - traefik.http.routers.keycloak.service=keycloak
+      - traefik.http.services.keycloak.loadbalancer.server.port=8080
+
+volumes:
+  keycloak-db-data:

@@ -1,0 +1,79 @@
+# FHIR data path — HAPI store + FHIR Information Gateway.
+# Gateway public via Traefik /fhir. HAPI internal only.
+# Sentry → GlitchTip over public HTTPS (Let's Encrypt IP cert — no Java truststore).
+
+services:
+  postgres-hapi:
+    image: postgres:14-alpine
+    container_name: postgres-hapi
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${HAPI_DB_NAME:-hapi}
+      POSTGRES_USER: ${HAPI_DB_USER:-hapi}
+      POSTGRES_PASSWORD: ${HAPI_DB_PASSWORD:-hapi123!}
+    volumes:
+      - hapi-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${HAPI_DB_USER:-hapi} -d ${HAPI_DB_NAME:-hapi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hapi:
+    image: opensrp/hapi-fhir-jpaserver-starter:latest
+    container_name: hapi
+    restart: unless-stopped
+    volumes:
+      - ./conf/hapi:/data/hapi-fhir/config:ro
+    # SENTRY_* come only from env_file — do NOT set SENTRY_DSN: ${...:-} here;
+    # an empty host expansion would override the file and disable Sentry.
+    env_file:
+      - path: conf/glitchtip/env.hapi
+        required: false
+    environment:
+      SPRING_CONFIG_LOCATION: file:///data/hapi-fhir/config/application.yaml
+    depends_on:
+      postgres-hapi:
+        condition: service_healthy
+
+  gateway:
+    image: onaio/fhir-gateway-plugin:v3.0.5
+    container_name: fhir-gateway
+    restart: unless-stopped
+    # SENTRY_DSN / ENVIRONMENT / RELEASE from conf/glitchtip/env.gateway (glitchtip-init)
+    env_file:
+      - path: conf/glitchtip/env.gateway
+        required: false
+    volumes:
+      # Override classpath defaults so tag-based content sync is not org-filtered.
+      # See conf/gateway/README.md
+      - ./conf/gateway:/data/gateway:ro
+    environment:
+      JAVA_TOOL_OPTIONS: -Dloader.path=/app
+      PROXY_TO: http://hapi:8080/fhir
+      TOKEN_ISSUER: ${TOKEN_ISSUER:-https://localhost/realms/opensrp}
+      ACCESS_CHECKER: permission
+      BACKEND_TYPE: HAPI
+      ALLOWED_QUERIES_FILE: /data/gateway/hapi_page_url_allowed_queries.json
+      SYNC_FILTER_IGNORE_RESOURCES_FILE: /data/gateway/hapi_sync_filter_ignored_queries.json
+      CARE_TEAM_TAG_URL: https://smartregister.org/care-team-tag-id
+      LOCATION_TAG_URL: https://smartregister.org/location-tag-id
+      ORGANISATION_TAG_URL: https://smartregister.org/organisation-tag-id
+      RELATED_ENTITY_TAG_URL: https://smartregister.org/related-entity-location-tag-id
+      CORS_ALLOW_ORIGIN: "*"
+    depends_on:
+      hapi:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+    labels:
+      - opensrp.proxy=true
+      - traefik.enable=true
+      - traefik.http.routers.fhir-gateway.rule=PathPrefix(`/fhir`)
+      - traefik.http.routers.fhir-gateway.entrypoints=web
+      - traefik.http.routers.fhir-gateway.priority=50
+      - traefik.http.routers.fhir-gateway.service=fhir-gateway
+      - traefik.http.services.fhir-gateway.loadbalancer.server.port=8080
+
+volumes:
+  hapi-db-data:

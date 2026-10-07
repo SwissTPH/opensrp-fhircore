@@ -1,0 +1,18 @@
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+certificatesResolvers:
+  le:
+    acme:
+      email: test@example.com
+      storage: /letsencrypt/acme.json
+      profile: shortlived
+      certificatesDuration: 160
+      httpChallenge:
+        entryPoint: web
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

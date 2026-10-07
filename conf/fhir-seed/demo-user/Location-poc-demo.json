@@ -1,0 +1,30 @@
+{
+  "resourceType": "Location",
+  "id": "poc-demo-location",
+  "status": "active",
+  "name": "POC Demo Site",
+  "mode": "instance",
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+          "code": "HOSP",
+          "display": "Hospital"
+        }
+      ]
+    }
+  ],
+  "physicalType": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+        "code": "si",
+        "display": "Site"
+      }
+    ]
+  },
+  "managingOrganization": {
+    "reference": "Organization/poc-demo-organization"
+  }
+}

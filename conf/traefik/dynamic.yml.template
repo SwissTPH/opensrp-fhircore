@@ -1,0 +1,104 @@
+# Rendered to dynamic.yml with PUBLIC_IP substituted.
+# Paths: /logs → GlitchTip, /fhir → Gateway, /* → Keycloak
+#
+# defaultGeneratedCert: use LE cert as default for IP connections (no SNI / IP SNI).
+
+tls:
+  stores:
+    default:
+      defaultGeneratedCert:
+        resolver: le
+        domain:
+          main: "${PUBLIC_IP}"
+
+http:
+  middlewares:
+    glitchtip-strip-static:
+      stripPrefix:
+        prefixes:
+          - /logs
+
+  routers:
+    # ACME HTTP-01 needs plain HTTP on :80 for /.well-known/acme-challenge/
+    # App routes on HTTP stay available for Android cleartext POC.
+
+    glitchtip-static-http:
+      rule: PathPrefix(`/logs/static`)
+      entryPoints: [web]
+      priority: 200
+      middlewares: [glitchtip-strip-static]
+      service: glitchtip
+
+    glitchtip-http:
+      rule: PathPrefix(`/logs`) && !PathPrefix(`/logs/static`)
+      entryPoints: [web]
+      priority: 100
+      service: glitchtip
+
+    fhir-http:
+      rule: PathPrefix(`/fhir`)
+      entryPoints: [web]
+      priority: 50
+      service: gateway
+
+    keycloak-http:
+      rule: PathPrefix(`/`)
+      entryPoints: [web]
+      priority: 1
+      service: keycloak
+
+    # --- HTTPS with Let's Encrypt IP cert (certResolver: le) ---
+    glitchtip-static-https:
+      rule: PathPrefix(`/logs/static`)
+      entryPoints: [websecure]
+      priority: 200
+      middlewares: [glitchtip-strip-static]
+      service: glitchtip
+      tls:
+        certResolver: le
+        domains:
+          - main: "${PUBLIC_IP}"
+
+    glitchtip-https:
+      rule: PathPrefix(`/logs`) && !PathPrefix(`/logs/static`)
+      entryPoints: [websecure]
+      priority: 100
+      service: glitchtip
+      tls:
+        certResolver: le
+        domains:
+          - main: "${PUBLIC_IP}"
+
+    fhir-https:
+      rule: PathPrefix(`/fhir`)
+      entryPoints: [websecure]
+      priority: 50
+      service: gateway
+      tls:
+        certResolver: le
+        domains:
+          - main: "${PUBLIC_IP}"
+
+    keycloak-https:
+      rule: PathPrefix(`/`)
+      entryPoints: [websecure]
+      priority: 1
+      service: keycloak
+      tls:
+        certResolver: le
+        domains:
+          - main: "${PUBLIC_IP}"
+
+  services:
+    gateway:
+      loadBalancer:
+        servers:
+          - url: http://gateway:8080
+    glitchtip:
+      loadBalancer:
+        servers:
+          - url: http://glitchtip-web:8000
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: http://keycloak:8080

@@ -1,0 +1,22 @@
+{
+  "resourceType": "CareTeam",
+  "id": "poc-demo-careteam",
+  "status": "active",
+  "name": "POC Demo Care Team",
+  "subject": {
+    "display": "POC Demo Clinic"
+  },
+  "participant": [
+    {
+      "member": {
+        "reference": "Practitioner/poc-demo-practitioner",
+        "display": "Demo User"
+      }
+    }
+  ],
+  "managingOrganization": [
+    {
+      "reference": "Organization/poc-demo-organization"
+    }
+  ]
+}

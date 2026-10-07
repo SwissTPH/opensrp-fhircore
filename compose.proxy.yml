@@ -1,0 +1,18 @@
+# Traefik — Let's Encrypt IP certificates (ACME shortlived).
+# Config is pre-rendered: PUBLIC_IP=... ACME_EMAIL=... ./conf/traefik/render-config.sh
+
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: opensrp-traefik
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${TRAEFIK_DASHBOARD_PORT:-8088}:8080"
+    volumes:
+      - ./conf/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./conf/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./conf/traefik/acme.json:/letsencrypt/acme.json
+    labels:
+      - traefik.enable=false

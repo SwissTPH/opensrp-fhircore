@@ -1,0 +1,13 @@
+entryPoints:
+  web:
+    address: ":80"
+certificatesResolvers:
+  le:
+    acme:
+      email: t@e.com
+      storage: /letsencrypt/acme.json
+      profile: shortlived
+      certificatesDuration: 160
+      disableCommonName: true
+      httpChallenge:
+        entryPoint: web

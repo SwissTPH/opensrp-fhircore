@@ -1,0 +1,31 @@
+{
+  "resourceType": "Practitioner",
+  "id": "poc-demo-practitioner",
+  "active": true,
+  "identifier": [
+    {
+      "use": "secondary",
+      "value": "8920acad-dd7e-4f82-90ea-dd1d76712747"
+    },
+    {
+      "use": "official",
+      "system": "http://opensrp.org/poc",
+      "value": "demo"
+    }
+  ],
+  "name": [
+    {
+      "use": "official",
+      "family": "User",
+      "given": ["Demo"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "email",
+      "value": "demo@example.com",
+      "use": "work"
+    }
+  ],
+  "gender": "unknown"
+}

@@ -1,0 +1,161 @@
+{
+  "resourceType": "Composition",
+  "id": "bb241830-3b97-56d1-830e-7cba5ccdc1f9",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://smartregister.org/app-id",
+        "code": "cdss",
+        "display": "CDSS bare application package"
+      }
+    ]
+  },
+  "identifier": {
+    "use": "official",
+    "system": "https://smartregister.org/app-id",
+    "value": "cdss"
+  },
+  "status": "final",
+  "type": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "1156600005",
+        "display": "Device setting parameter"
+      }
+    ]
+  },
+  "date": "2026-08-05",
+  "author": [
+    {
+      "display": "CDSS bare seed"
+    }
+  ],
+  "title": "CDSS bare configuration (client register)",
+  "section": [
+    {
+      "title": "Application configuration",
+      "mode": "working",
+      "focus": {
+        "reference": "Binary/c0a8c3ef-c200-5a26-9fe5-53afcf1bb6a5",
+        "identifier": {
+          "value": "application"
+        }
+      }
+    },
+    {
+      "title": "Sync configuration",
+      "mode": "working",
+      "focus": {
+        "reference": "Binary/cd4dfbc2-3309-5984-a6fd-54eb2f57b695",
+        "identifier": {
+          "value": "sync"
+        }
+      }
+    },
+    {
+      "title": "Navigation configuration",
+      "mode": "working",
+      "focus": {
+        "reference": "Binary/7b99e243-1718-580a-874a-d55259c17a7b",
+        "identifier": {
+          "value": "navigation"
+        }
+      }
+    },
+    {
+      "title": "Register configurations",
+      "mode": "working",
+      "section": [
+        {
+          "title": "Client register",
+          "mode": "working",
+          "focus": {
+            "reference": "Binary/9449da7b-9ba3-54d8-a92e-4344a98fcd0b",
+            "identifier": {
+              "value": "clientRegister"
+            }
+          }
+        },
+        {
+          "title": "Task register",
+          "mode": "working",
+          "focus": {
+            "reference": "Binary/78bd14f7-e321-51f9-8680-0e8d0b05fc19",
+            "identifier": {
+              "value": "taskRegister"
+            }
+          }
+        },
+        {
+          "title": "Household register",
+          "mode": "working",
+          "focus": {
+            "reference": "Binary/a942e8aa-29b8-52a2-b0d3-096ebf224a45",
+            "identifier": {
+              "value": "householdRegister"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Profile configurations",
+      "mode": "working",
+      "section": [
+        {
+          "title": "Client profile",
+          "mode": "working",
+          "focus": {
+            "reference": "Binary/89048710-7be1-5a90-b9cc-72bdab167d40",
+            "identifier": {
+              "value": "clientProfile"
+            }
+          }
+        },
+        {
+          "title": "Household profile",
+          "mode": "working",
+          "focus": {
+            "reference": "Binary/c85cca11-1f03-5359-9636-4212bcfd86ff",
+            "identifier": {
+              "value": "householdProfile"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Questionnaires",
+      "mode": "working",
+      "section": [
+        {
+          "title": "Client registration",
+          "mode": "working",
+          "focus": {
+            "reference": "Questionnaire/cdss-client-registration",
+            "identifier": {
+              "value": "cdss-client-registration"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "StructureMaps",
+      "mode": "working",
+      "section": [
+        {
+          "title": "Client registration",
+          "mode": "working",
+          "focus": {
+            "reference": "StructureMap/cdss-client-registration",
+            "identifier": {
+              "value": "cdss-client-registration"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

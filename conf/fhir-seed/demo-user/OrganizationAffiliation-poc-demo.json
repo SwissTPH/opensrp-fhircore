@@ -1,0 +1,13 @@
+{
+  "resourceType": "OrganizationAffiliation",
+  "id": "poc-demo-org-affiliation",
+  "active": true,
+  "organization": {
+    "reference": "Organization/poc-demo-organization"
+  },
+  "location": [
+    {
+      "reference": "Location/poc-demo-location"
+    }
+  ]
+}

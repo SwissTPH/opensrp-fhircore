@@ -1,0 +1,28 @@
+{
+  "resourceType": "PractitionerRole",
+  "id": "poc-demo-practitioner-role",
+  "active": true,
+  "practitioner": {
+    "reference": "Practitioner/poc-demo-practitioner"
+  },
+  "organization": {
+    "reference": "Organization/poc-demo-organization"
+  },
+  "location": [
+    {
+      "reference": "Location/poc-demo-location"
+    }
+  ],
+  "code": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/practitioner-role",
+          "code": "doctor",
+          "display": "Doctor"
+        }
+      ],
+      "text": "Provider"
+    }
+  ]
+}

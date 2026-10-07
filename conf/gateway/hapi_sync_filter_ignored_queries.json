@@ -1,0 +1,151 @@
+{
+  "entries": [
+    {
+      "path": "Questionnaire",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Questionnaire",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "StructureMap",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "StructureMap",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "List",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "PlanDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "PlanDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Library",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Library",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Measure",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "LocationHierarchy",
+      "methodType": "GET",
+      "queryParams": {
+        "identifier": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "PractitionerDetail",
+      "methodType": "GET",
+      "queryParams": {
+        "keycloak-uuid": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ActivityDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ActivityDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "CodeSystem",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "CodeSystem",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ValueSet",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ValueSet",
+      "methodType": "GET",
+      "queryParams": {
+        "_tag": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "ConceptMap",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "Device",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    },
+    {
+      "path": "StructureDefinition",
+      "methodType": "GET",
+      "queryParams": {
+        "_id": "ANY_VALUE"
+      }
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+# One-shot bootstrap / ordering helpers for local (and first-time) deploys.
+# Omit this file for prod-like runs when config, realm, and DB schema are
+# already provisioned elsewhere (ConfigMap, secrets, CI, operators).
+#
+# Merges extra depends_on onto hapi / gateway / glitchtip-* so runtime files
+# stay startable without this overlay.
+#
+#   # local (default via compose.yml)
+#   docker compose up -d
+#
+#   # prod-like: no generators / wait sidecars
+#   docker compose -f compose.auth.yml -f compose.fhir.yml -f compose.logs.yml up -d
+
+services:
+  # ---------------------------------------------------------------------------
+  # Render conf/hapi/application.yaml from template (lock: conf/.setup.lock)
+  # ---------------------------------------------------------------------------
+  init-setup:
+    image: alpine:3.19
+    container_name: opensrp-init-setup
+    restart: "no"
+    command: sh /conf/init.sh
+    environment:
+      POSTGRES_DB: ${HAPI_DB_NAME:-hapi}
+      POSTGRES_USER: ${HAPI_DB_USER:-hapi}
+      POSTGRES_PASSWORD: ${HAPI_DB_PASSWORD:-hapi123!}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-fhir-core-client-secret-2025}
+    volumes:
+      - ./conf:/conf:rw
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Gate gateway until HAPI /fhir/metadata answers
+  # ---------------------------------------------------------------------------
+  hapi-healthcheck:
+    image: alpine:3.20
+    container_name: hapi-healthcheck
+    restart: "no"
+    depends_on:
+      hapi:
+        condition: service_started
+    # Use GET, not --spider (HEAD): HAPI rejects HEAD on /metadata with MethodNotAllowed
+    command: >-
+      sh -c "apk add --no-cache wget >/dev/null &&
+      until wget --no-verbose --tries=1 --timeout=10 -O /dev/null http://hapi:8080/fhir/metadata; do
+        echo 'Waiting for HAPI...'; sleep 10;
+      done && echo 'HAPI is healthy'"
+
+  # ---------------------------------------------------------------------------
+  # GlitchTip schema + org/project/DSN (runtime services in compose.logs.yml)
+  # ---------------------------------------------------------------------------
+  glitchtip-migrate:
+    image: glitchtip/glitchtip:latest
+    restart: "no"
+    depends_on:
+      glitchtip-postgres:
+        condition: service_healthy
+      glitchtip-redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${GLITCHTIP_DB_USER:-glitchtip}:${GLITCHTIP_DB_PASSWORD:-change_me}@glitchtip-postgres:5432/${GLITCHTIP_DB_NAME:-glitchtip}
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-change_me_to_something_random}
+      REDIS_URL: redis://glitchtip-redis:6379/0
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost/logs}
+      BASE_PATH: /logs
+      PORT: "8000"
+      EMAIL_URL: ${GLITCHTIP_EMAIL_URL:-consolemail://}
+    command: ./manage.py migrate
+
+  # Superuser + Android project; writes conf/glitchtip/public-dsn*.txt
+  glitchtip-init:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip-init
+    restart: "no"
+    # root so we can write DSN files into the bind-mounted conf/glitchtip
+    user: "0:0"
+    depends_on:
+      glitchtip-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://${GLITCHTIP_DB_USER:-glitchtip}:${GLITCHTIP_DB_PASSWORD:-change_me}@glitchtip-postgres:5432/${GLITCHTIP_DB_NAME:-glitchtip}
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-change_me_to_something_random}
+      REDIS_URL: redis://glitchtip-redis:6379/0
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost/logs}
+      BASE_PATH: /logs
+      ENABLE_ORGANIZATION_CREATION: ${ENABLE_ORGANIZATION_CREATION:-True}
+      PORT: "8000"
+      EMAIL_URL: ${GLITCHTIP_EMAIL_URL:-consolemail://}
+      GLITCHTIP_SUPERUSER_EMAIL: ${GLITCHTIP_SUPERUSER_EMAIL:-admin@opensrp.local}
+      GLITCHTIP_SUPERUSER_PASSWORD: ${GLITCHTIP_SUPERUSER_PASSWORD:-adminadmin}
+      # DSN hosts (path /logs via Traefik). Public HTTPS with LE IP cert is trusted by Java.
+      GLITCHTIP_PUBLIC_HOST: ${GLITCHTIP_DOMAIN:-https://localhost/logs}
+      GLITCHTIP_ANDROID_HOST: ${GLITCHTIP_ANDROID_HOST:-https://10.0.2.2/logs}
+      GLITCHTIP_INTERNAL_HOST: ${GLITCHTIP_INTERNAL_HOST:-}
+      GLITCHTIP_OUT_DIR: /out
+    volumes:
+      - ./conf/glitchtip:/out:rw
+    command: sh /out/init-glitchtip.sh
+
+  # --- merged depends (Compose merges maps across included files) ---
+  hapi:
+    depends_on:
+      init-setup:
+        condition: service_completed_successfully
+
+  gateway:
+    depends_on:
+      hapi-healthcheck:
+        condition: service_completed_successfully
+
+  glitchtip-web:
+    depends_on:
+      glitchtip-migrate:
+        condition: service_completed_successfully
+      glitchtip-init:
+        condition: service_completed_successfully
+
+  glitchtip-worker:
+    depends_on:
+      glitchtip-migrate:
+        condition: service_completed_successfully
+      glitchtip-init:
+        condition: service_completed_successfully

@@ -1,0 +1,12 @@
+{
+  "resourceType": "Organization",
+  "id": "poc-demo-organization",
+  "active": true,
+  "name": "POC Demo Clinic",
+  "identifier": [
+    {
+      "use": "official",
+      "value": "poc-demo-org"
+    }
+  ]
+}

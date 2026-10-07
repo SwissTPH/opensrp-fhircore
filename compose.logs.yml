@@ -1,0 +1,95 @@
+# GlitchTip error monitoring — long-running services only.
+# Public access only via Traefik PathPrefix(`/logs`) (same pattern as openimis-dist_dkr).
+# Schema migrate + project/DSN bootstrap live in compose.init.yml.
+
+x-glitchtip-env: &glitchtip-env
+  DATABASE_URL: postgres://${GLITCHTIP_DB_USER:-glitchtip}:${GLITCHTIP_DB_PASSWORD:-change_me}@glitchtip-postgres:5432/${GLITCHTIP_DB_NAME:-glitchtip}
+  SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-change_me_to_something_random}
+  REDIS_URL: redis://glitchtip-redis:6379/0
+  # Public URL through Traefik
+  GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost/logs}
+  BASE_PATH: /logs
+  GLITCHTIP_ENABLE_LOGS: "True"
+  # Self-hosted default is false — UI "create organization" is blocked without this
+  ENABLE_ORGANIZATION_CREATION: ${ENABLE_ORGANIZATION_CREATION:-True}
+  PROXY_ENV: "True"
+  ALLOWED_HOSTS: "*"
+  CSRF_TRUSTED_ORIGINS: ${GLITCHTIP_CSRF_TRUSTED_ORIGINS:-http://localhost,http://127.0.0.1}
+  PORT: "8000"
+  EMAIL_URL: ${GLITCHTIP_EMAIL_URL:-consolemail://}
+
+services:
+  glitchtip-postgres:
+    # Stay on major 14 unless you wipe volumes — PG refuses PG14 data dirs on 16+
+    image: postgres:14-alpine
+    container_name: glitchtip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${GLITCHTIP_DB_NAME:-glitchtip}
+      POSTGRES_USER: ${GLITCHTIP_DB_USER:-glitchtip}
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:-change_me}
+    volumes:
+      - glitchtip-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GLITCHTIP_DB_USER:-glitchtip} -d ${GLITCHTIP_DB_NAME:-glitchtip}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  glitchtip-redis:
+    image: redis:7
+    container_name: glitchtip-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip-web
+    restart: unless-stopped
+    depends_on:
+      glitchtip-postgres:
+        condition: service_healthy
+      glitchtip-redis:
+        condition: service_healthy
+    environment:
+      <<: *glitchtip-env
+    # No host ports — Traefik only
+    labels:
+      - opensrp.proxy=true
+      - traefik.enable=true
+
+      # Static assets: strip /logs so Django sees /static/...
+      - traefik.http.routers.glitchtip-static.rule=PathPrefix(`/logs/static`)
+      - traefik.http.routers.glitchtip-static.entrypoints=web
+      - traefik.http.routers.glitchtip-static.priority=200
+      - traefik.http.routers.glitchtip-static.middlewares=glitchtip-strip-static
+      - traefik.http.middlewares.glitchtip-strip-static.stripprefix.prefixes=/logs
+      - traefik.http.middlewares.glitchtip-strip-static.stripprefix.forceSlash=true
+      - traefik.http.routers.glitchtip-static.service=glitchtip
+
+      # App + API: keep /logs prefix (BASE_PATH=/logs)
+      - traefik.http.routers.glitchtip.rule=PathPrefix(`/logs`) && !PathPrefix(`/logs/static`)
+      - traefik.http.routers.glitchtip.entrypoints=web
+      - traefik.http.routers.glitchtip.priority=100
+      - traefik.http.routers.glitchtip.service=glitchtip
+      - traefik.http.services.glitchtip.loadbalancer.server.port=8000
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip-worker
+    restart: unless-stopped
+    depends_on:
+      glitchtip-postgres:
+        condition: service_healthy
+      glitchtip-redis:
+        condition: service_healthy
+    environment:
+      <<: *glitchtip-env
+    command: ./bin/run-worker.sh
+
+volumes:
+  glitchtip-db-data:

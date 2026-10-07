@@ -1,0 +1,33 @@
+# Rendered by conf/traefik/render-config.sh
+# LE IP certs: shortlived + http-01 + disableCommonName
+# https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability
+
+api:
+  dashboard: true
+  insecure: true
+
+log:
+  level: INFO
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  le:
+    acme:
+      email: "opensrp-poc@smartregister.org"
+      storage: /letsencrypt/acme.json
+      profile: shortlived
+      certificatesDuration: 160
+      disableCommonName: true
+      # caServer: production (default)
+      httpChallenge:
+        entryPoint: web
