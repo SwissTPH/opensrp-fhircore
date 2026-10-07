@@ -1,0 +1,65 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "cdss-household-registration",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire"
+    ],
+    "tag": [
+      {
+        "system": "https://smartregister.org/app-id",
+        "code": "cdss",
+        "display": "CDSS application"
+      }
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/uv/cpg/StructureDefinition/cpg-knowledgeCapability",
+      "valueCode": "shareable"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/cpg/StructureDefinition/cpg-knowledgeCapability",
+      "valueCode": "computable"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/cpg/StructureDefinition/cpg-knowledgeCapability",
+      "valueCode": "publishable"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/cpg/StructureDefinition/cpg-knowledgeRepresentationLevel",
+      "valueCode": "structured"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-targetStructureMap",
+      "valueCanonical": "https://fhir.opensrp.io/cdss/StructureMap/cdss-household-registration"
+    }
+  ],
+  "url": "https://fhir.opensrp.io/cdss/Questionnaire/cdss-household-registration",
+  "name": "CdssHouseholdRegistration",
+  "title": "Household registration",
+  "status": "active",
+  "subjectType": [
+    "Group"
+  ],
+  "item": [
+    {
+      "linkId": "hh-name",
+      "text": "Household name",
+      "type": "string",
+      "required": true
+    },
+    {
+      "linkId": "hh-number",
+      "text": "Household number",
+      "type": "string",
+      "required": false
+    },
+    {
+      "linkId": "hh-village",
+      "text": "Village",
+      "type": "string",
+      "required": false
+    }
+  ]
+}

@@ -181,7 +181,15 @@ comp = {
                         "reference": "Questionnaire/cdss-client-registration",
                         "identifier": {"value": "cdss-client-registration"},
                     },
-                }
+                },
+                {
+                    "title": "Household registration",
+                    "mode": "working",
+                    "focus": {
+                        "reference": "Questionnaire/cdss-household-registration",
+                        "identifier": {"value": "cdss-household-registration"},
+                    },
+                },
             ],
         },
         {
@@ -195,7 +203,15 @@ comp = {
                         "reference": "StructureMap/cdss-client-registration",
                         "identifier": {"value": "cdss-client-registration"},
                     },
-                }
+                },
+                {
+                    "title": "Household registration",
+                    "mode": "working",
+                    "focus": {
+                        "reference": "StructureMap/cdss-household-registration",
+                        "identifier": {"value": "cdss-household-registration"},
+                    },
+                },
             ],
         },
     ],
