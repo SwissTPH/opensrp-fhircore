@@ -1,0 +1,117 @@
+{
+  "appId": "cdss",
+  "configType": "navigation",
+  "menuActionButton": {
+    "id": "addHouseholdButton",
+    "visible": true,
+    "display": "Add household",
+    "menuIconConfig": {
+      "type": "local",
+      "reference": "ic_add"
+    },
+    "actions": [
+      {
+        "trigger": "ON_CLICK",
+        "workflow": "LAUNCH_QUESTIONNAIRE",
+        "id": "householdRegister",
+        "questionnaire": {
+          "id": "cdss-household-registration",
+          "title": "Register household",
+          "saveButtonText": "Save",
+          "resourceType": "Group",
+          "setPractitionerDetails": true,
+          "setOrganizationDetails": true,
+          "snackBarMessage": {
+            "message": "Household registered",
+            "actionLabel": "",
+            "duration": "Short"
+          }
+        }
+      }
+    ]
+  },
+  "clientRegisters": [
+    {
+      "id": "clientRegister",
+      "display": "All clients",
+      "showCount": true,
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_user"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_REGISTER",
+          "id": "clientRegister"
+        },
+        {
+          "trigger": "ON_COUNT",
+          "id": "clientRegister"
+        }
+      ]
+    },
+    {
+      "id": "householdRegister",
+      "display": "Households",
+      "showCount": true,
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_households"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_REGISTER",
+          "id": "householdRegister"
+        },
+        {
+          "trigger": "ON_COUNT",
+          "id": "householdRegister"
+        }
+      ]
+    }
+  ],
+  "bottomSheetRegisters": {
+    "visible": false,
+    "registers": []
+  },
+  "staticMenu": [
+    {
+      "id": "taskRegister",
+      "visible": true,
+      "display": "Task Register",
+      "showCount": true,
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_tasks_priority"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_REGISTER",
+          "id": "taskRegister"
+        },
+        {
+          "trigger": "ON_COUNT",
+          "id": "taskRegister"
+        }
+      ]
+    },
+    {
+      "id": "menuSettings",
+      "visible": true,
+      "display": "{{ menu.settings }}",
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_settings"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_SETTINGS"
+        }
+      ]
+    }
+  ]
+}

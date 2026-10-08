@@ -1,0 +1,48 @@
+map "https://fhir.opensrp.io/cdss/StructureMap/cdss-client-registration" = 'CdssClientRegistration'
+
+uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
+uses "http://hl7.org/fhir/StructureDefinition/Bundle" as target
+uses "http://hl7.org/fhir/StructureDefinition/Patient" as target
+
+// Patient only. RelatedPerson links are created by RelatedPersonLinkService
+// after the native add-related flow, not by this map.
+group CdssClientRegistration(source src : QuestionnaireResponse, target bundle: Bundle) {
+    src -> bundle.id = uuid() "r_bun_id";
+    src -> bundle.type = 'collection' "r_bun_type";
+    src -> bundle.entry as entry, entry.resource = create('Patient') as patient then
+        ExtractPatient(src, patient) "r_bun_entries";
+}
+
+group ExtractPatient(source src : QuestionnaireResponse, target patient : Patient) {
+    src -> patient.id = uuid() "r_p_id";
+    src -> patient.active = true "r_p_active";
+
+    // Name (first / middle / family)
+    src.item as item where(linkId = 'Ccc.A.DE04' or linkId = 'Ccc.A.DE05' or linkId = 'Ccc.A.DE06') ->
+      patient.name = create('HumanName') as patientName then {
+        src -> patientName.use = 'official' "r_p_n_use";
+        src -> patientName.given = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE04').answer.value) "r_p_gname";
+        src -> patientName.given = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE05').answer.value) "r_p_mname";
+        src -> patientName.family = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE06').answer.value) "r_p_fname";
+      } "r_p_name";
+
+    // Consolidated DOB
+    src.item as item where(linkId = 'Ccc.A.DE08' and answer.exists()) ->
+      patient.birthDate = evaluate(item, $this.answer.value) "r_p_dob";
+
+    // National ID
+    src.item as item where(linkId = 'Ccc.A.DE01' and answer.exists()) ->
+      patient.identifier = create('Identifier') as iden then {
+        src -> iden.use = 'official' "r_p_id_use";
+        src -> iden.system = 'https://fhir.opensrp.io/cdss/identifier/national-id' "r_p_id_sys";
+        src -> iden.value = evaluate(item, $this.answer.value) "r_p_id_val";
+      } "r_p_iden";
+
+    // Sex (choice codes from questionnaire)
+    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE17') ->
+      patient.gender = 'female' "r_p_female";
+    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE18') ->
+      patient.gender = 'male' "r_p_male";
+    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE19') ->
+      patient.gender = 'unknown' "r_p_unknown";
+}

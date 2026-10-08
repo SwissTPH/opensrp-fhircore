@@ -15,6 +15,14 @@
 set -euo pipefail
 
 SEED_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SEED_DIR/../.." && pwd)"
+
+# Credentials live in .secrets at the repo root, which git ignores; see .secrets.example.
+SECRETS_FILE="${SECRETS_FILE:-$REPO_ROOT/.secrets}"
+if [ -f "$SECRETS_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$SECRETS_FILE"
+fi
 
 FHIR="${FHIR:-https://194.182.171.88/fhir}"
 KEYCLOAK="${KEYCLOAK:-https://194.182.171.88}"
@@ -25,6 +33,12 @@ CLIENT_ID="${KEYCLOAK_CLIENT_ID:-fhir-core-client}"
 CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
 USERNAME="${KEYCLOAK_USER:-demo}"
 PASSWORD="${KEYCLOAK_PASSWORD:-}"
+
+if [ "$SKIP_AUTH" != "1" ] && { [ -z "$CLIENT_SECRET" ] || [ -z "$PASSWORD" ]; }; then
+  echo "Missing credentials. Copy .secrets.example to .secrets and fill it in," >&2
+  echo "or export KEYCLOAK_CLIENT_SECRET and KEYCLOAK_PASSWORD." >&2
+  exit 1
+fi
 
 COMPOSITION_FILE="$SEED_DIR/Composition-cdss.json"
 GENERATED="$SEED_DIR/generated"

@@ -46,8 +46,9 @@ captures/
 # Configs
 android/quest/src/main/assets/configs/*
 
-# Keep the default configs
+# Keep the default configs, and cdss, which is the deployed package the seed is built from
 !android/quest/src/main/assets/configs/app
+!android/quest/src/main/assets/configs/cdss
 
 # Project resource directories
 android/quest/src/main/assets/resources/echis/
@@ -57,6 +58,9 @@ CLAUDE.md
 android/CLAUDE.md
 
 .env
+
+# Real credentials for the seed scripts; .secrets.example is the committed template
+.secrets
 
 # Traefik TLS material
 conf/traefik/certs/

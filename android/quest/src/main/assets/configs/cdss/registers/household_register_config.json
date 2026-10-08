@@ -1,0 +1,319 @@
+{
+  "appId": "cdss",
+  "configType": "register",
+  "id": "householdRegister",
+  "pageSize": 20,
+  "fhirResource": {
+    "baseResource": {
+      "resource": "Group",
+      "dataQueries": [
+        {
+          "paramName": "type",
+          "filterCriteria": [
+            {
+              "dataType": "CODING",
+              "value": {
+                "system": "http://hl7.org/fhir/group-type",
+                "code": "person"
+              }
+            }
+          ]
+        },
+        {
+          "paramName": "code",
+          "filterCriteria": [
+            {
+              "dataType": "CODEABLECONCEPT",
+              "value": {
+                "system": "https://www.snomed.org",
+                "code": "35359004"
+              }
+            }
+          ]
+        }
+      ],
+      "sortConfigs": [
+        {
+          "paramName": "_lastUpdated",
+          "dataType": "DATE",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    "relatedResources": [
+      {
+        "resource": "Patient",
+        "isRevInclude": false,
+        "searchParameter": "member",
+        "relatedResources": [
+          {
+            "resource": "Condition",
+            "searchParameter": "subject"
+          },
+          {
+            "id": "dueTasks",
+            "resource": "Task",
+            "searchParameter": "subject",
+            "resultAsCount": true,
+            "dataQueries": [
+              {
+                "paramName": "status",
+                "filterCriteria": [
+                  {
+                    "dataType": "CODE",
+                    "value": {
+                      "system": "http://hl7.org/fhir/task-status",
+                      "code": "ready"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "overdueTasks",
+            "resource": "Task",
+            "searchParameter": "subject",
+            "resultAsCount": true,
+            "dataQueries": [
+              {
+                "paramName": "status",
+                "filterCriteria": [
+                  {
+                    "dataType": "CODE",
+                    "value": {
+                      "system": "http://hl7.org/fhir/task-status",
+                      "code": "failed"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "activeResourceFilters": [
+    {
+      "resourceType": "Group",
+      "active": true
+    },
+    {
+      "resourceType": "Patient",
+      "active": true
+    }
+  ],
+  "searchBar": {
+    "visible": true,
+    "display": "Search household name or ID",
+    "computedRules": [
+      "familyName",
+      "familyId"
+    ]
+  },
+  "registerCard": {
+    "rules": [
+      {
+        "name": "familyLogicalId",
+        "condition": "true",
+        "actions": [
+          "data.put('familyLogicalId', fhirPath.extractValue(Group, 'Group.id'))"
+        ]
+      },
+      {
+        "name": "familyName",
+        "condition": "true",
+        "actions": [
+          "data.put('familyName', fhirPath.extractValue(Group, 'Group.name'))"
+        ]
+      },
+      {
+        "name": "familyId",
+        "condition": "true",
+        "actions": [
+          "data.put('familyId', fhirPath.extractValue(Group, 'Group.identifier[0].value'))"
+        ]
+      },
+      {
+        "name": "familyVillage",
+        "condition": "true",
+        "actions": [
+          "data.put('familyVillage', fhirPath.extractValue(Group, 'Group.characteristic[0].code.text'))"
+        ]
+      },
+      {
+        "name": "memberCount",
+        "condition": "true",
+        "actions": [
+          "data.put('memberCount', size(Patient))"
+        ]
+      },
+      {
+        "name": "householdSubtitle",
+        "condition": "true",
+        "priority": 2,
+        "actions": [
+          "data.put('householdSubtitle', (empty(data.get('familyVillage')) ? '' : data.get('familyVillage') + ' - ') + 'HH No: ' + data.get('familyId') + ' - ' + data.get('memberCount') + ' member(s)')"
+        ]
+      },
+      {
+        "name": "dueTaskCount",
+        "condition": "true",
+        "actions": [
+          "data.put('dueTaskCount', service.computeTotalCount(dueTasks))"
+        ]
+      },
+      {
+        "name": "overDueTaskCount",
+        "condition": "true",
+        "actions": [
+          "data.put('overDueTaskCount', service.computeTotalCount(overdueTasks))"
+        ]
+      },
+      {
+        "name": "totalTaskCount",
+        "condition": "true",
+        "priority": 2,
+        "actions": [
+          "var sum = data.get('dueTaskCount') + data.get('overDueTaskCount'); data.put('totalTaskCount', sum == 0 ? '' : sum)"
+        ]
+      },
+      {
+        "name": "serviceStatus",
+        "condition": "true",
+        "priority": 2,
+        "actions": [
+          "data.put('serviceStatus', data.get('dueTaskCount') > 0 ? 'DUE' : data.get('overDueTaskCount') > 0 ? 'OVERDUE' : 'UPCOMING')"
+        ]
+      },
+      {
+        "name": "serviceMemberIcons",
+        "condition": "true",
+        "actions": [
+          "data.put('serviceMemberIcons', StringUtils:join([service.mapResourcesToLabeledCSV(Patient, \"Patient.active and (Patient.birthDate >= today() - 5 'years')\", 'CHILD'), service.mapResourcesToLabeledCSV(Condition, \"Condition.code.text = 'Pregnant'\", 'PREGNANT_WOMAN')], ','))"
+        ]
+      }
+    ],
+    "views": [
+      {
+        "viewType": "COLUMN",
+        "children": [
+          {
+            "viewType": "SERVICE_CARD",
+            "details": [
+              {
+                "viewType": "COMPOUND_TEXT",
+                "primaryText": "@{familyName} Household",
+                "primaryTextColor": "#000000"
+              },
+              {
+                "viewType": "COMPOUND_TEXT",
+                "primaryText": "@{householdSubtitle}",
+                "fontSize": 14.0,
+                "primaryTextColor": "#5A5A5A"
+              }
+            ],
+            "showVerticalDivider": true,
+            "serviceMemberIcons": "@{serviceMemberIcons}",
+            "serviceButton": {
+              "visible": true,
+              "text": "@{totalTaskCount}",
+              "status": "@{serviceStatus}",
+              "fontSize": 14.0,
+              "buttonType": "BIG",
+              "actions": [
+                {
+                  "trigger": "ON_CLICK",
+                  "workflow": "LAUNCH_PROFILE",
+                  "id": "householdProfile",
+                  "params": [
+                    {
+                      "paramType": "PARAMDATA",
+                      "key": "familyLogicalId",
+                      "value": "@{familyLogicalId}"
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "trigger": "ON_CLICK",
+                "workflow": "LAUNCH_PROFILE",
+                "id": "householdProfile",
+                "params": [
+                  {
+                    "paramType": "PARAMDATA",
+                    "key": "familyLogicalId",
+                    "value": "@{familyLogicalId}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "noResults": {
+    "title": "No households",
+    "message": "Register a household to get started",
+    "actionButton": {
+      "id": "addHouseholdNoResults",
+      "visible": true,
+      "display": "Add household",
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_QUESTIONNAIRE",
+          "id": "householdRegister",
+          "questionnaire": {
+            "id": "cdss-household-registration",
+            "title": "Register household",
+            "saveButtonText": "Save",
+            "resourceType": "Group",
+            "setPractitionerDetails": true,
+            "setOrganizationDetails": true,
+            "snackBarMessage": {
+              "message": "Household registered",
+              "actionLabel": "",
+              "duration": "Short"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "fabActions": [
+    {
+      "id": "addHouseholdFab",
+      "visible": true,
+      "display": "Add household",
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_add"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_QUESTIONNAIRE",
+          "id": "householdRegister",
+          "questionnaire": {
+            "id": "cdss-household-registration",
+            "title": "Register household",
+            "saveButtonText": "Save",
+            "resourceType": "Group",
+            "setPractitionerDetails": true,
+            "setOrganizationDetails": true,
+            "snackBarMessage": {
+              "message": "Household registered",
+              "actionLabel": "",
+              "duration": "Short"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

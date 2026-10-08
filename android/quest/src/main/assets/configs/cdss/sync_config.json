@@ -1,0 +1,79 @@
+{
+  "resourceType": "Parameters",
+  "configType": "sync",
+  "parameter": [
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "name": "appContentTag",
+        "code": "_tag",
+        "base": [
+          "Questionnaire",
+          "StructureMap",
+          "PlanDefinition",
+          "Library",
+          "ActivityDefinition",
+          "ValueSet",
+          "CodeSystem",
+          "Binary"
+        ],
+        "type": "token",
+        "expression": "https://smartregister.org/app-id|cdss"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "name": "clinicalData",
+        "code": "_lastUpdated",
+        "base": [
+          "Patient",
+          "Observation",
+          "Condition",
+          "CarePlan",
+          "QuestionnaireResponse",
+          "Task",
+          "Group",
+          "RelatedPerson",
+          "Flag",
+          "Encounter",
+          "MedicationRequest",
+          "List"
+        ],
+        "type": "date",
+        "expression": "gt1900-01-01"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "SearchParameter",
+        "name": "count",
+        "code": "_count",
+        "base": [
+          "Patient",
+          "Observation",
+          "Condition",
+          "CarePlan",
+          "QuestionnaireResponse",
+          "Questionnaire",
+          "StructureMap",
+          "Task",
+          "Group",
+          "PlanDefinition",
+          "RelatedPerson",
+          "Library",
+          "ActivityDefinition",
+          "ValueSet",
+          "CodeSystem",
+          "Binary",
+          "Flag",
+          "Encounter",
+          "MedicationRequest",
+          "List"
+        ],
+        "type": "token",
+        "expression": "#count"
+      }
+    }
+  ]
+}

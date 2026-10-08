@@ -1,6 +1,9 @@
 build/
 release/
-src/*/assets/configs/
+src/*/assets/configs/*
+# cdss is the deployed app package and is versioned; the Binary/Composition seed in
+# conf/fhir-seed is generated from it, so it has to be reproducible.
+!src/*/assets/configs/cdss/
 src/androidTest/assets/resources.db
 src/benchmark/assets/resources.db
 **/debug/

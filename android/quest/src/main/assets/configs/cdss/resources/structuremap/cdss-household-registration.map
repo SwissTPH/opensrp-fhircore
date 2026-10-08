@@ -1,0 +1,57 @@
+map "https://fhir.opensrp.io/cdss/StructureMap/cdss-household-registration" = 'CdssHouseholdRegistration'
+
+uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
+uses "http://hl7.org/fhir/StructureDefinition/Bundle" as target
+uses "http://hl7.org/fhir/StructureDefinition/Group" as target
+
+// Produces the household Group that householdRegister queries: type 'person' and
+// code SNOMED 35359004. Members are added later by the add-member flow, which
+// relies on QuestionnaireConfig.groupResource rather than on this map.
+group CdssHouseholdRegistration(source src : QuestionnaireResponse, target bundle: Bundle) {
+    src -> bundle.id = uuid() "r_bun_id";
+    src -> bundle.type = 'collection' "r_bun_type";
+    src -> bundle.entry as entry, entry.resource = create('Group') as group then
+        ExtractGroup(src, group) "r_bun_entries";
+}
+
+group ExtractGroup(source src : QuestionnaireResponse, target group : Group) {
+    src -> group.id = uuid() "r_g_id";
+    src -> group.active = true "r_g_active";
+    src -> group.type = 'person' "r_g_type";
+    src -> group.actual = true "r_g_actual";
+
+    src -> group.name = evaluate(src, $this.item.where(linkId = 'hh-name').answer.value) "r_g_name";
+
+    // Household number. The register card reads Group.identifier[0].value.
+    src.item as item where(linkId = 'hh-number' and answer.exists()) ->
+      group.identifier = create('Identifier') as iden then {
+        src -> iden.use = 'official' "r_g_id_use";
+        src -> iden.system = 'https://fhir.opensrp.io/cdss/identifier/household-number' "r_g_id_sys";
+        src -> iden.value = evaluate(item, $this.answer.value) "r_g_id_val";
+      } "r_g_iden";
+
+    // Village. Emitted first so it lands in Group.characteristic[0], which is where
+    // the register and profile read familyVillage from.
+    src.item as village where(linkId = 'hh-village' and answer.exists()) ->
+      group.characteristic = create('Group_Characteristic') as characteristic then {
+        village -> characteristic.code = create('CodeableConcept') as villageCode then {
+          src -> villageCode.coding = c("http://ona.io/codes", "hh_village") as coding then {
+            src -> coding.display = 'Household Village' "r_g_ch_disp";
+          } "r_g_ch_coding";
+          src -> villageCode.text = evaluate(village, $this.answer.value) "r_g_ch_text";
+        } "r_g_ch_code";
+        village -> characteristic.value = create('CodeableConcept') as villageValue then {
+          src -> villageValue.text = evaluate(village, $this.answer.value) "r_g_ch_val_text";
+        } "r_g_ch_value";
+        src -> characteristic.exclude = false "r_g_ch_exclude";
+      } "r_g_characteristic";
+
+    src -> group.code = create('CodeableConcept') as concept then ExtractHouseholdCode(src, concept) "r_g_code";
+}
+
+group ExtractHouseholdCode(source src : QuestionnaireResponse, target concept : CodeableConcept) {
+    src -> concept.coding = c("https://www.snomed.org", "35359004") as coding then {
+        src -> coding.display = 'Household' "r_g_code_disp";
+    } "r_g_code_coding";
+    src -> concept.text = 'Household' "r_g_code_text";
+}

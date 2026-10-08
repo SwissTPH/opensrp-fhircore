@@ -1,0 +1,245 @@
+{
+  "appId": "cdss",
+  "configType": "register",
+  "id": "clientRegister",
+  "pageSize": 20,
+  "fhirResource": {
+    "baseResource": {
+      "resource": "Patient",
+      "sortConfigs": [
+        {
+          "paramName": "_lastUpdated",
+          "dataType": "DATE",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    "relatedResources": [
+      {
+        "id": "relatedPersons",
+        "resource": "RelatedPerson",
+        "searchParameter": "patient"
+      },
+      {
+        "id": "tasks",
+        "resource": "Task",
+        "searchParameter": "subject"
+      },
+      {
+        "id": "carePlans",
+        "resource": "CarePlan",
+        "searchParameter": "subject"
+      }
+    ]
+  },
+  "activeResourceFilters": [
+    {
+      "resourceType": "Patient",
+      "active": "true"
+    }
+  ],
+  "searchBar": {
+    "visible": true,
+    "display": "Search name or ID",
+    "computedRules": [
+      "patientName",
+      "patientId"
+    ]
+  },
+  "registerCard": {
+    "rules": [
+      {
+        "name": "patientLogicalId",
+        "condition": "true",
+        "actions": [
+          "data.put('patientLogicalId', fhirPath.extractValue(Patient, 'Patient.id'))"
+        ]
+      },
+      {
+        "name": "patientFirstName",
+        "condition": "true",
+        "actions": [
+          "data.put('patientFirstName', fhirPath.extractValue(Patient, \"Patient.name[0].select(given[0])\"))"
+        ]
+      },
+      {
+        "name": "patientLastName",
+        "condition": "true",
+        "actions": [
+          "data.put('patientLastName', fhirPath.extractValue(Patient, \"Patient.name[0].select(family)\"))"
+        ]
+      },
+      {
+        "name": "patientAge",
+        "condition": "true",
+        "actions": [
+          "data.put('patientAge', service.extractAge(Patient))"
+        ]
+      },
+      {
+        "name": "patientGender",
+        "condition": "true",
+        "actions": [
+          "data.put('patientGender', service.extractGender(Patient))"
+        ]
+      },
+      {
+        "name": "patientName",
+        "condition": "true",
+        "actions": [
+          "data.put('patientName', (data.get('patientFirstName') + ' ' + data.get('patientLastName')).trim() + ', ' + (data.get('patientGender') == 'Female' ? 'F' : data.get('patientGender') == 'Male' ? 'M' : data.get('patientGender')) + ', ' + data.get('patientAge'))"
+        ]
+      },
+      {
+        "name": "patientId",
+        "condition": "true",
+        "actions": [
+          "data.put('patientId', fhirPath.extractValue(Patient, 'Patient.identifier[0].value'))"
+        ]
+      },
+      {
+        "name": "hasGuardians",
+        "condition": "true",
+        "actions": [
+          "data.put('hasGuardians', size(relatedPersons) > 0)"
+        ]
+      },
+      {
+        "name": "relationHint",
+        "condition": "true",
+        "actions": [
+          "data.put('relationHint', data.get('hasGuardians') ? 'Has parent/guardian' : '')"
+        ]
+      }
+    ],
+    "views": [
+      {
+        "viewType": "COLUMN",
+        "children": [
+          {
+            "viewType": "SERVICE_CARD",
+            "details": [
+              {
+                "viewType": "COMPOUND_TEXT",
+                "primaryText": "@{patientName}",
+                "primaryTextColor": "#000000"
+              },
+              {
+                "viewType": "COMPOUND_TEXT",
+                "primaryText": "ID: @{patientId}",
+                "fontSize": 14.0,
+                "primaryTextColor": "#5A5A5A"
+              },
+              {
+                "viewType": "COMPOUND_TEXT",
+                "primaryText": "@{relationHint}",
+                "fontSize": 12.0,
+                "primaryTextColor": "#6F7274"
+              }
+            ],
+            "showVerticalDivider": true,
+            "serviceButton": {
+              "visible": true,
+              "text": "Start care",
+              "status": "DUE",
+              "fontSize": 14.0,
+              "buttonType": "BIG",
+              "actions": [
+                {
+                  "trigger": "ON_CLICK",
+                  "workflow": "APPLY_NAMED_EVENT",
+                  "display": "Start care",
+                  "params": [
+                    {
+                      "paramType": "PARAMDATA",
+                      "key": "namedEvent",
+                      "value": "available-care"
+                    },
+                    {
+                      "paramType": "PARAMDATA",
+                      "key": "generateEncounter",
+                      "value": "true"
+                    },
+                    {
+                      "paramType": "RESOURCE_ID",
+                      "key": "subjectId",
+                      "value": "@{patientLogicalId}"
+                    }
+                  ]
+                }
+              ]
+            },
+            "actions": [
+              {
+                "trigger": "ON_CLICK",
+                "workflow": "LAUNCH_PROFILE",
+                "id": "clientProfile",
+                "params": [
+                  {
+                    "paramType": "RESOURCE_ID",
+                    "key": "resourceId",
+                    "value": "@{patientLogicalId}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fabActions": [
+    {
+      "id": "addClientFab",
+      "visible": true,
+      "display": "Add client",
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_add"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_QUESTIONNAIRE",
+          "id": "clientRegister",
+          "questionnaire": {
+            "id": "cdss-client-registration",
+            "title": "Register client",
+            "saveButtonText": "Save",
+            "resourceType": "Patient",
+            "setPractitionerDetails": true,
+            "setOrganizationDetails": true,
+            "snackBarMessage": {
+              "message": "Client registered",
+              "actionLabel": "",
+              "duration": "Short"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "noResults": {
+    "title": "No clients",
+    "message": "Register a client to get started",
+    "actionButton": {
+      "id": "addClientNoResults",
+      "visible": true,
+      "display": "Add client",
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "LAUNCH_QUESTIONNAIRE",
+          "questionnaire": {
+            "id": "cdss-client-registration",
+            "title": "Register client",
+            "saveButtonText": "Save",
+            "resourceType": "Patient",
+            "setPractitionerDetails": true,
+            "setOrganizationDetails": true
+          }
+        }
+      ]
+    }
+  }
+}

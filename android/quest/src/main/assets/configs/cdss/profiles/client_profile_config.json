@@ -1,0 +1,479 @@
+{
+  "appId": "cdss",
+  "configType": "profile",
+  "id": "clientProfile",
+  "fhirResource": {
+    "baseResource": {
+      "resource": "Patient"
+    },
+    "relatedResources": [
+      {
+        "id": "relatedPersons",
+        "resource": "RelatedPerson",
+        "searchParameter": "patient"
+      },
+      {
+        "resource": "Condition",
+        "searchParameter": "subject"
+      },
+      {
+        "resource": "CarePlan",
+        "searchParameter": "subject"
+      },
+      {
+        "id": "availableTasks",
+        "resource": "Task",
+        "searchParameter": "subject"
+      }
+    ]
+  },
+  "fabActions": [
+    {
+      "id": "addRelatedPerson",
+      "visible": true,
+      "display": "",
+      "menuIconConfig": {
+        "type": "local",
+        "reference": "ic_add"
+      },
+      "actions": [
+        {
+          "trigger": "ON_CLICK",
+          "workflow": "ADD_RELATED_PERSON",
+          "display": "Add related person",
+          "params": [
+            {
+              "paramType": "RESOURCE_ID",
+              "key": "subjectId",
+              "value": "@{patientLogicalId}"
+            },
+            {
+              "paramType": "PARAMDATA",
+              "key": "registrationQuestionnaireId",
+              "value": "cdss-client-registration"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "name": "patientLogicalId",
+      "condition": "true",
+      "actions": [
+        "data.put('patientLogicalId', fhirPath.extractValue(Patient, 'Patient.id'))"
+      ]
+    },
+    {
+      "name": "patientFirstName",
+      "condition": "true",
+      "actions": [
+        "data.put('patientFirstName', fhirPath.extractValue(Patient, \"Patient.name[0].select(given[0])\"))"
+      ]
+    },
+    {
+      "name": "patientLastName",
+      "condition": "true",
+      "actions": [
+        "data.put('patientLastName', fhirPath.extractValue(Patient, \"Patient.name[0].select(family)\"))"
+      ]
+    },
+    {
+      "name": "patientAge",
+      "condition": "true",
+      "actions": [
+        "data.put('patientAge', service.extractAge(Patient))"
+      ]
+    },
+    {
+      "name": "patientGender",
+      "condition": "true",
+      "actions": [
+        "data.put('patientGender', service.extractGender(Patient))"
+      ]
+    },
+    {
+      "name": "patientDob",
+      "condition": "true",
+      "actions": [
+        "data.put('patientDob', service.extractDOB(Patient, 'dd MMM yyyy'))"
+      ]
+    },
+    {
+      "name": "patientName",
+      "condition": "true",
+      "actions": [
+        "data.put('patientName', (data.get('patientFirstName') + ' ' + data.get('patientLastName')).trim())"
+      ]
+    },
+    {
+      "name": "dependentCount",
+      "condition": "true",
+      "actions": [
+        "data.put('dependentCount', size(dependentChildren))"
+      ]
+    },
+    {
+      "name": "hasDependents",
+      "condition": "true",
+      "actions": [
+        "data.put('hasDependents', data.get('dependentCount') > 0)"
+      ]
+    },
+    {
+      "name": "guardianRelationCount",
+      "condition": "true",
+      "actions": [
+        "data.put('guardianRelationCount', size(relatedPersons))"
+      ]
+    },
+    {
+      "name": "hasGuardians",
+      "condition": "true",
+      "actions": [
+        "data.put('hasGuardians', data.get('guardianRelationCount') > 0)"
+      ]
+    },
+    {
+      "name": "isLikelyChild",
+      "condition": "true",
+      "actions": [
+        "data.put('isLikelyChild', data.get('hasGuardians') && !data.get('hasDependents'))"
+      ]
+    },
+    {
+      "name": "relatedPersonSubjectId",
+      "condition": "true",
+      "actions": [
+        "data.put('relatedPersonSubjectId', data.get('isLikelyChild') ? data.get('patientLogicalId') : '')"
+      ]
+    }
+  ],
+  "topAppBar": {
+    "title": {
+      "viewType": "COMPOUND_TEXT",
+      "primaryText": "@{patientName}",
+      "primaryTextColor": "#FFFFFF",
+      "fontSize": 20.0,
+      "maxLines": 1,
+      "primaryTextFontWeight": "BOLD"
+    },
+    "content": [
+      {
+        "viewType": "COMPOUND_TEXT",
+        "primaryText": "@{patientGender}, @{patientAge} · @{patientDob}",
+        "primaryTextColor": "#FFFFFF",
+        "fontSize": 16.0
+      }
+    ]
+  },
+  "views": [
+    {
+      "viewType": "CARD",
+      "header": {
+        "viewType": "COMPOUND_TEXT",
+        "primaryText": "CLIENT",
+        "primaryTextColor": "#6F7274",
+        "fontSize": 18.0,
+        "padding": 16
+      },
+      "content": [
+        {
+          "viewType": "COLUMN",
+          "padding": 16,
+          "children": [
+            {
+              "viewType": "COMPOUND_TEXT",
+              "primaryText": "@{patientName}",
+              "primaryTextColor": "#000000",
+              "fontSize": 18.0
+            },
+            {
+              "viewType": "PERSONAL_DATA",
+              "personalDataItems": [
+                {
+                  "label": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "Sex",
+                    "fontSize": 14.0,
+                    "primaryTextColor": "#6F7274"
+                  },
+                  "displayValue": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{patientGender}",
+                    "fontSize": 16.0,
+                    "primaryTextColor": "#000000"
+                  }
+                },
+                {
+                  "label": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "DOB",
+                    "fontSize": 14.0,
+                    "primaryTextColor": "#6F7274"
+                  },
+                  "displayValue": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{patientDob}",
+                    "fontSize": 16.0,
+                    "primaryTextColor": "#000000"
+                  }
+                },
+                {
+                  "label": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "Age",
+                    "fontSize": 14.0,
+                    "primaryTextColor": "#6F7274"
+                  },
+                  "displayValue": {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{patientAge}",
+                    "fontSize": 16.0,
+                    "primaryTextColor": "#000000"
+                  }
+                }
+              ]
+            },
+            {
+              "viewType": "BUTTON",
+              "text": "Start care",
+              "status": "DUE",
+              "buttonType": "BIG",
+              "actions": [
+                {
+                  "trigger": "ON_CLICK",
+                  "workflow": "APPLY_NAMED_EVENT",
+                  "display": "Start care",
+                  "params": [
+                    {
+                      "paramType": "PARAMDATA",
+                      "key": "namedEvent",
+                      "value": "available-care"
+                    },
+                    {
+                      "paramType": "PARAMDATA",
+                      "key": "generateEncounter",
+                      "value": "true"
+                    },
+                    {
+                      "paramType": "RESOURCE_ID",
+                      "key": "subjectId",
+                      "value": "@{patientLogicalId}"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "viewType": "CARD",
+      "header": {
+        "viewType": "COMPOUND_TEXT",
+        "primaryText": "CHILDREN / DEPENDENTS",
+        "primaryTextColor": "#6F7274",
+        "fontSize": 18.0,
+        "padding": 16
+      },
+      "contentPadding": 0,
+      "content": [
+        {
+          "viewType": "LIST",
+          "id": "dependentChildrenList",
+          "padding": 16,
+          "emptyList": {
+            "message": "No children or dependents linked yet"
+          },
+          "resources": [
+            {
+              "relatedResourceId": "dependentChildren",
+              "resourceType": "Patient",
+              "relatedResources": [
+                {
+                  "id": "dependentRelatedPersons",
+                  "relatedResourceId": "dependentRelatedPersons",
+                  "resourceType": "RelatedPerson",
+                  "fhirPathExpression": "RelatedPerson.patient.reference"
+                }
+              ]
+            }
+          ],
+          "registerCard": {
+            "rules": [
+              {
+                "name": "childLogicalId",
+                "condition": "true",
+                "actions": [
+                  "data.put('childLogicalId', fhirPath.extractValue(Patient, 'Patient.id'))"
+                ]
+              },
+              {
+                "name": "childFirstName",
+                "condition": "true",
+                "actions": [
+                  "data.put('childFirstName', fhirPath.extractValue(Patient, \"Patient.name[0].select(given[0])\"))"
+                ]
+              },
+              {
+                "name": "childLastName",
+                "condition": "true",
+                "actions": [
+                  "data.put('childLastName', fhirPath.extractValue(Patient, \"Patient.name[0].select(family)\"))"
+                ]
+              },
+              {
+                "name": "childAge",
+                "condition": "true",
+                "actions": [
+                  "data.put('childAge', service.extractAge(Patient))"
+                ]
+              },
+              {
+                "name": "childName",
+                "condition": "true",
+                "actions": [
+                  "data.put('childName', (data.get('childFirstName') + ' ' + data.get('childLastName')).trim() + ', ' + data.get('childAge'))"
+                ]
+              },
+              {
+                "name": "relationshipLabel",
+                "condition": "true",
+                "actions": [
+                  "data.put('relationshipLabel', fhirPath.extractValue(size(dependentRelatedPersons) > 0 ? dependentRelatedPersons.get(0) : null, 'RelatedPerson.relationship[0].coding[0].display') + (service.isPrimaryCaregiver(size(dependentRelatedPersons) > 0 ? dependentRelatedPersons.get(0) : null) ? ' · Caregiver' : ''))"
+                ]
+              }
+            ],
+            "views": [
+              {
+                "viewType": "SERVICE_CARD",
+                "details": [
+                  {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{childName}",
+                    "primaryTextColor": "#000000"
+                  },
+                  {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{relationshipLabel}",
+                    "primaryTextColor": "#6F7274",
+                    "fontSize": 14.0
+                  }
+                ],
+                "actions": [
+                  {
+                    "trigger": "ON_CLICK",
+                    "workflow": "LAUNCH_PROFILE",
+                    "id": "clientProfile",
+                    "params": [
+                      {
+                        "paramType": "RESOURCE_ID",
+                        "key": "resourceId",
+                        "value": "@{childLogicalId}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "viewType": "CARD",
+      "header": {
+        "viewType": "COMPOUND_TEXT",
+        "primaryText": "PARENTS / GUARDIANS",
+        "primaryTextColor": "#6F7274",
+        "fontSize": 18.0,
+        "padding": 16
+      },
+      "contentPadding": 0,
+      "content": [
+        {
+          "viewType": "LIST",
+          "id": "guardiansList",
+          "padding": 16,
+          "emptyList": {
+            "message": "No parents or guardians linked yet"
+          },
+          "resources": [
+            {
+              "relatedResourceId": "relatedPersons",
+              "resourceType": "RelatedPerson"
+            }
+          ],
+          "registerCard": {
+            "rules": [
+              {
+                "name": "relationshipLabel",
+                "condition": "true",
+                "actions": [
+                  "data.put('relationshipLabel', fhirPath.extractValue(RelatedPerson, 'RelatedPerson.relationship[0].coding[0].display') + (service.isPrimaryCaregiver(RelatedPerson) ? ' · Caregiver' : ''))"
+                ]
+              },
+              {
+                "name": "guardianName",
+                "condition": "true",
+                "actions": [
+                  "data.put('guardianName', fhirPath.extractValue(RelatedPerson, \"RelatedPerson.name[0].select(given[0] + ' ' + family)\"))"
+                ]
+              },
+              {
+                "name": "guardianPatientRef",
+                "condition": "true",
+                "actions": [
+                  "data.put('guardianPatientRef', fhirPath.extractValue(RelatedPerson, \"RelatedPerson.identifier.where(type.coding.code='PI').value.first()\"))"
+                ]
+              },
+              {
+                "name": "guardianPatientId",
+                "condition": "true",
+                "priority": 2,
+                "actions": [
+                  "data.put('guardianPatientId', service.extractLogicalId(data.get('guardianPatientRef')))"
+                ]
+              }
+            ],
+            "views": [
+              {
+                "viewType": "SERVICE_CARD",
+                "details": [
+                  {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{guardianName}",
+                    "primaryTextColor": "#000000"
+                  },
+                  {
+                    "viewType": "COMPOUND_TEXT",
+                    "primaryText": "@{relationshipLabel}",
+                    "primaryTextColor": "#6F7274",
+                    "fontSize": 14.0
+                  }
+                ],
+                "actions": [
+                  {
+                    "trigger": "ON_CLICK",
+                    "workflow": "LAUNCH_PROFILE",
+                    "id": "clientProfile",
+                    "params": [
+                      {
+                        "paramType": "RESOURCE_ID",
+                        "key": "resourceId",
+                        "value": "@{guardianPatientId}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

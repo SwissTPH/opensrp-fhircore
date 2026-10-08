@@ -1,0 +1,95 @@
+{
+  "appId": "cdss",
+  "configType": "application",
+  "theme": "DEFAULT",
+  "appTitle": "CDSS",
+  "registerDate": "2020-10-27",
+  "reportRepeatTime": "23:22",
+  "remoteSyncPageSize": 100,
+  "languages": [
+    "en",
+    "sw",
+    "fr"
+  ],
+  "useDarkTheme": false,
+  "syncInterval": 30,
+  "syncStrategy": [
+    "Location",
+    "Organization",
+    "CareTeam",
+    "Practitioner"
+  ],
+  "loginConfig": {
+    "showLogo": true,
+    "enablePin": true,
+    "supervisorContactNumber": "1234567890"
+  },
+  "deviceToDeviceSync": {
+    "resourcesToSync": [
+      "Group",
+      "Patient",
+      "CarePlan",
+      "Task",
+      "Encounter",
+      "Observation",
+      "Condition",
+      "Questionnaire",
+      "QuestionnaireResponse",
+      "RelatedPerson",
+      "List",
+      "Flag"
+    ]
+  },
+  "eventWorkflows": [
+    {
+      "eventType": "RESOURCE_CLOSURE",
+      "eventResources": [
+        {
+          "id": "sickChildConditionToBeClosed",
+          "resource": "Condition",
+          "configRules": [
+            {
+              "name": "patientId",
+              "condition": "true",
+              "actions": [
+                "data.put('patientId', fhirPath.extractValue(CarePlan, 'CarePlan.subject.reference'))"
+              ]
+            }
+          ],
+          "dataQueries": [
+            {
+              "paramName": "code",
+              "filterCriteria": [
+                {
+                  "dataType": "CODEABLECONCEPT",
+                  "value": {
+                    "system": "http://snomed.info/sct",
+                    "code": "275142008"
+                  }
+                }
+              ]
+            },
+            {
+              "paramName": "subject",
+              "filterCriteria": [
+                {
+                  "dataType": "REFERENCE",
+                  "computedRule": "patientId"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "logGpsLocation": [
+    "QUESTIONNAIRE"
+  ],
+  "dateFormat": "MMM d, hh:mm aa",
+  "navigationStartDestination": {
+    "launcherType": "REGISTER",
+    "id": "clientRegister",
+    "screenTitle": "All clients"
+  }
+}

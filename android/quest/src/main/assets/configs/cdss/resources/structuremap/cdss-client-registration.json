@@ -1,0 +1,496 @@
+{
+  "resourceType": "StructureMap",
+  "id": "cdss-client-registration",
+  "text": {
+    "status": "additional",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><pre>map &quot;https://fhir.opensrp.io/cdss/StructureMap/cdss-client-registration&quot; = 'CdssClientRegistration'\n\nuses &quot;http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse&quot; as source\nuses &quot;http://hl7.org/fhir/StructureDefinition/Bundle&quot; as target\nuses &quot;http://hl7.org/fhir/StructureDefinition/Patient&quot; as target\n\n// Patient only. RelatedPerson links are created by RelatedPersonLinkService\n// after the native add-related flow, not by this map.\ngroup CdssClientRegistration(source src : QuestionnaireResponse, target bundle: Bundle) {\n    src -&gt; bundle.id = uuid() &quot;r_bun_id&quot;;\n    src -&gt; bundle.type = 'collection' &quot;r_bun_type&quot;;\n    src -&gt; bundle.entry as entry, entry.resource = create('Patient') as patient then\n        ExtractPatient(src, patient) &quot;r_bun_entries&quot;;\n}\n\ngroup ExtractPatient(source src : QuestionnaireResponse, target patient : Patient) {\n    src -&gt; patient.id = uuid() &quot;r_p_id&quot;;\n    src -&gt; patient.active = true &quot;r_p_active&quot;;\n\n    // Name (first / middle / family)\n    src.item as item where(linkId = 'Ccc.A.DE04' or linkId = 'Ccc.A.DE05' or linkId = 'Ccc.A.DE06') -&gt;\n      patient.name = create('HumanName') as patientName then {\n        src -&gt; patientName.use = 'official' &quot;r_p_n_use&quot;;\n        src -&gt; patientName.given = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE04').answer.value) &quot;r_p_gname&quot;;\n        src -&gt; patientName.given = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE05').answer.value) &quot;r_p_mname&quot;;\n        src -&gt; patientName.family = evaluate(src, $this.item.where(linkId = 'Ccc.A.DE06').answer.value) &quot;r_p_fname&quot;;\n      } &quot;r_p_name&quot;;\n\n    // Consolidated DOB\n    src.item as item where(linkId = 'Ccc.A.DE08' and answer.exists()) -&gt;\n      patient.birthDate = evaluate(item, $this.answer.value) &quot;r_p_dob&quot;;\n\n    // National ID\n    src.item as item where(linkId = 'Ccc.A.DE01' and answer.exists()) -&gt;\n      patient.identifier = create('Identifier') as iden then {\n        src -&gt; iden.use = 'official' &quot;r_p_id_use&quot;;\n        src -&gt; iden.system = 'https://fhir.opensrp.io/cdss/identifier/national-id' &quot;r_p_id_sys&quot;;\n        src -&gt; iden.value = evaluate(item, $this.answer.value) &quot;r_p_id_val&quot;;\n      } &quot;r_p_iden&quot;;\n\n    // Sex (choice codes from questionnaire)\n    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE17') -&gt;\n      patient.gender = 'female' &quot;r_p_female&quot;;\n    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE18') -&gt;\n      patient.gender = 'male' &quot;r_p_male&quot;;\n    src.item as sex where(linkId = 'Ccc.A.DE16' and answer.value.code = 'Ccc.A.DE19') -&gt;\n      patient.gender = 'unknown' &quot;r_p_unknown&quot;;\n}\n</pre></div>"
+  },
+  "url": "https://fhir.opensrp.io/cdss/StructureMap/cdss-client-registration",
+  "name": "CdssClientRegistration",
+  "title": "CDSS client registration",
+  "status": "active",
+  "structure": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+      "mode": "source"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/Bundle",
+      "mode": "target"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/Patient",
+      "mode": "target"
+    }
+  ],
+  "group": [
+    {
+      "name": "CdssClientRegistration",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "src",
+          "type": "QuestionnaireResponse",
+          "mode": "source"
+        },
+        {
+          "name": "bundle",
+          "type": "Bundle",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "r_bun_id",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "bundle",
+              "contextType": "variable",
+              "element": "id",
+              "transform": "uuid"
+            }
+          ]
+        },
+        {
+          "name": "r_bun_type",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "bundle",
+              "contextType": "variable",
+              "element": "type",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueString": "collection"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_bun_entries",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "bundle",
+              "contextType": "variable",
+              "element": "entry",
+              "variable": "entry"
+            },
+            {
+              "context": "entry",
+              "contextType": "variable",
+              "element": "resource",
+              "variable": "patient",
+              "transform": "create",
+              "parameter": [
+                {
+                  "valueString": "Patient"
+                }
+              ]
+            }
+          ],
+          "dependent": [
+            {
+              "name": "ExtractPatient",
+              "variable": [
+                "src",
+                "patient"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ExtractPatient",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "src",
+          "type": "QuestionnaireResponse",
+          "mode": "source"
+        },
+        {
+          "name": "patient",
+          "type": "Patient",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "r_p_id",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "id",
+              "transform": "uuid"
+            }
+          ]
+        },
+        {
+          "name": "r_p_active",
+          "source": [
+            {
+              "context": "src"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "active",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueBoolean": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_name",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "item",
+              "condition": "((linkId = 'Ccc.A.DE04') or (linkId = 'Ccc.A.DE05') or (linkId = 'Ccc.A.DE06'))"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "name",
+              "variable": "patientName",
+              "transform": "create",
+              "parameter": [
+                {
+                  "valueString": "HumanName"
+                }
+              ]
+            }
+          ],
+          "rule": [
+            {
+              "name": "r_p_n_use",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "patientName",
+                  "contextType": "variable",
+                  "element": "use",
+                  "transform": "copy",
+                  "parameter": [
+                    {
+                      "valueString": "official"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "r_p_gname",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "patientName",
+                  "contextType": "variable",
+                  "element": "given",
+                  "transform": "evaluate",
+                  "parameter": [
+                    {
+                      "valueId": "src"
+                    },
+                    {
+                      "valueString": "$this.item.where(linkId = 'Ccc.A.DE04').answer.value"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "r_p_mname",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "patientName",
+                  "contextType": "variable",
+                  "element": "given",
+                  "transform": "evaluate",
+                  "parameter": [
+                    {
+                      "valueId": "src"
+                    },
+                    {
+                      "valueString": "$this.item.where(linkId = 'Ccc.A.DE05').answer.value"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "r_p_fname",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "patientName",
+                  "contextType": "variable",
+                  "element": "family",
+                  "transform": "evaluate",
+                  "parameter": [
+                    {
+                      "valueId": "src"
+                    },
+                    {
+                      "valueString": "$this.item.where(linkId = 'Ccc.A.DE06').answer.value"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_dob",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "item",
+              "condition": "((linkId = 'Ccc.A.DE08') and answer.exists())"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "birthDate",
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueId": "item"
+                },
+                {
+                  "valueString": "$this.answer.value"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_iden",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "item",
+              "condition": "((linkId = 'Ccc.A.DE01') and answer.exists())"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "identifier",
+              "variable": "iden",
+              "transform": "create",
+              "parameter": [
+                {
+                  "valueString": "Identifier"
+                }
+              ]
+            }
+          ],
+          "rule": [
+            {
+              "name": "r_p_id_use",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "iden",
+                  "contextType": "variable",
+                  "element": "use",
+                  "transform": "copy",
+                  "parameter": [
+                    {
+                      "valueString": "official"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "r_p_id_sys",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "iden",
+                  "contextType": "variable",
+                  "element": "system",
+                  "transform": "copy",
+                  "parameter": [
+                    {
+                      "valueString": "https://fhir.opensrp.io/cdss/identifier/national-id"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "r_p_id_val",
+              "source": [
+                {
+                  "context": "src"
+                }
+              ],
+              "target": [
+                {
+                  "context": "iden",
+                  "contextType": "variable",
+                  "element": "value",
+                  "transform": "evaluate",
+                  "parameter": [
+                    {
+                      "valueId": "item"
+                    },
+                    {
+                      "valueString": "$this.answer.value"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_female",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "sex",
+              "condition": "((linkId = 'Ccc.A.DE16') and (answer.value.code = 'Ccc.A.DE17'))"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "gender",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueString": "female"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_male",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "sex",
+              "condition": "((linkId = 'Ccc.A.DE16') and (answer.value.code = 'Ccc.A.DE18'))"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "gender",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueString": "male"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "r_p_unknown",
+          "source": [
+            {
+              "context": "src",
+              "element": "item",
+              "variable": "sex",
+              "condition": "((linkId = 'Ccc.A.DE16') and (answer.value.code = 'Ccc.A.DE19'))"
+            }
+          ],
+          "target": [
+            {
+              "context": "patient",
+              "contextType": "variable",
+              "element": "gender",
+              "transform": "copy",
+              "parameter": [
+                {
+                  "valueString": "unknown"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "tag": [
+      {
+        "system": "https://smartregister.org/app-id",
+        "code": "cdss",
+        "display": "CDSS application"
+      }
+    ]
+  }
+}
