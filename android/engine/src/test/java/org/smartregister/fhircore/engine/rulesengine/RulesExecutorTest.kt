@@ -210,6 +210,56 @@ class RulesExecutorTest : RobolectricTest() {
     }
   }
 
+  /**
+   * The base list resource is put into the rule facts under [ListResourceConfig.id] when one is
+   * set, so rules written against the resource type name find nothing and silently compute blanks.
+   */
+  @Test
+  @kotlinx.coroutines.ExperimentalCoroutinesApi
+  fun listResourceIdShadowsTheResourceTypeNameInRuleFacts() {
+    runTest {
+      val patient = Faker.buildPatient(id = "patientId", given = "Betty", family = "Jones")
+      val rules =
+        listOf(
+          RuleConfig(
+            name = "patientFirstName",
+            condition = "true",
+            actions =
+              listOf(
+                "data.put('patientFirstName', fhirPath.extractValue(Patient, \"Patient.name[0].select(given[0])\"))",
+              ),
+          ),
+        )
+
+      fun firstNameFor(listResourceId: String?): String? {
+        val listProperties =
+          ListProperties(
+            registerCard = RegisterCardConfig(rules = rules),
+            viewType = ViewType.CARD,
+            resources =
+              listOf(ListResourceConfig(id = listResourceId, resourceType = ResourceType.Patient)),
+          )
+        val relatedResources =
+          mutableMapOf<String, LinkedList<Resource>>(
+            ResourceType.Patient.name to LinkedList<Resource>().apply { add(patient) },
+          )
+        val stateMap = mutableStateMapOf<String, SnapshotStateList<ResourceData>>()
+        rulesExecutor.processListResourceData(
+          listProperties = listProperties,
+          relatedResourcesMap = relatedResources,
+          computedValuesMap = emptyMap(),
+          listResourceDataStateMap = stateMap,
+        )
+        return stateMap[listProperties.id]?.first()?.computedValuesMap?.get("patientFirstName")
+          as String?
+      }
+
+      // Either way the row exists: the list itself is looked up by resource type.
+      Assert.assertEquals("Betty", firstNameFor(null))
+      Assert.assertEquals("", firstNameFor("householdPatients"))
+    }
+  }
+
   @Test
   @kotlinx.coroutines.ExperimentalCoroutinesApi
   fun processListResourceDataWithDataAndExpression() {
